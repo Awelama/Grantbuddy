@@ -1,29 +1,29 @@
-# DCI 691 Build 2 - Streamlit Bot (R. Beghetto, fall 2024)
+# Grantbuddy - Streamlit Bot (Prince, fall 2024)
 import streamlit as st
 import google.generativeai as genai
 from PyPDF2 import PdfReader
 from PIL import Image
 
 # Streamlit configuration
-st.set_page_config(page_title="Streamlit Chatbot", layout="wide")
+st.set_page_config(page_title="Grantbuddy", layout="wide")
 
 # Display image
 # This code attempts to open and display an image file named 'Build2.png'.
 # If successful, it shows the image with a caption. If there's an error, it displays an error message instead.
 # You can customize this by changing the image file name and path. Supported image types include .png, .jpg, .jpeg, and .gif.
 # To use a different image, replace 'Build2.png' with your desired image file name (e.g., 'my_custom_image.jpg').
-image_path = 'Build2.png'
+image_path = 'Grantbuddy.webp'
 try:
     image = Image.open(image_path)
-    st.image(image, caption='Created by YOUR NAME (2024)', use_column_width=True)
+    st.image(image, caption='Prince (2024)', use_column_width=True)
 except Exception as e:
     st.error(f"Error loading image: {e}")
 
 # Title and BotDescription 
 # You can customize the title, description, and caption by modifying the text within the quotes.
-st.title("Welcome Build 2 Bot!")
-st.write("[Provide a description of your own bot for the user]")
-st.caption("Note: This Bot can make mistakes. Check all important information.")
+st.title("Welcome Grantbuddy!")
+st.write("[Grantbuddy is an advanced AI assistant specializing in proposal writing, budgeting and impact storytelling for educators and NGOs doing impactful work. Grantbuddy identifies as her, and her primary function ia to help you create compelling, comprehesnive, and tailored fundraising proposals for your projects. Let's do it!]")
+st.caption("Hey, I am an Ai bot and can make mistakes. When such happens, please give me some grace and get me a cup of coffee and let's continue. Remember to check all important information. Let's go!")
 
 # Initialize Gemini client
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
