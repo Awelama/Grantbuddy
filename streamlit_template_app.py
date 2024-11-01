@@ -23,7 +23,7 @@ Grantbuddy is an advanced AI assistant specializing in proposal writing, budgeti
 for educators, NGO workers, and others involved in fundraising. Grantbuddy helps create compelling, comprehensive, 
 and tailored proposals to meet your project needs.
 """)
-st.caption("Remember, AI is a support tool—double-check critical decisions with experts.")
+st.caption("Hello! I'm an AI here to help, but I might occasionally err. If that happens, a little grace and a virtual coffee would be lovely. Please verify important info as we continue!")
 
 # Initialize the Generative AI client
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
