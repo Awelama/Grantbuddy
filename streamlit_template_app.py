@@ -154,5 +154,5 @@ if user_input:
 
 # Debug information
 st.sidebar.title("Debug Info")
-for debug_msg in st.debug_info():
+for debug_msg in st.session_state.debug if "debug" in st.session_state else []:
     st.sidebar.text(debug_msg)
