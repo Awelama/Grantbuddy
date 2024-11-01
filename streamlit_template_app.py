@@ -1,4 +1,3 @@
-# Grantbuddy - Streamlit Bot (Prince, fall 2024)
 import streamlit as st
 import google.generativeai as genai
 from PyPDF2 import PdfReader
@@ -8,44 +7,45 @@ from PIL import Image
 st.set_page_config(page_title="Grantbuddy", layout="wide")
 
 # Display image
-# This code attempts to open and display an image file named 'Build2.png'.
-# If successful, it shows the image with a caption. If there's an error, it displays an error message instead.
-# You can customize this by changing the image file name and path. Supported image types include .png, .jpg, .jpeg, and .gif.
-# To use a different image, replace 'Build2.png' with your desired image file name (e.g., 'my_custom_image.jpg').
 image_path = 'Grantbuddy.webp'
 try:
     image = Image.open(image_path)
     st.image(image, caption='Prince (2024)', use_column_width=True)
+except FileNotFoundError:
+    st.error("Image file not found. Please check the file path.")
 except Exception as e:
-    st.error(f"Error loading image: {e}")
+    st.error("An unexpected error occurred while loading the image.")
 
-# Title and BotDescription 
-# You can customize the title, description, and caption by modifying the text within the quotes.
-st.title("Welcome Grantbuddy!")
-st.write("[Grantbuddy is an advanced AI assistant specializing in proposal writing, budgeting and impact storytelling for educators and NGOs doing impactful work. Grantbuddy identifies as her, and her primary function ia to help you create compelling, comprehesnive, and tailored fundraising proposals for your projects. Let's do it!]")
-st.caption("Hey, I am an Ai bot and can make mistakes. When such happens, please give me some grace and get me a cup of coffee and let's continue. Remember to check all important information. Let's go!")
+# Title and Description
+st.title("Welcome to Grantbuddy!")
+st.write("""
+Grantbuddy is an advanced AI assistant specializing in proposal writing, budgeting, and impact storytelling 
+for educators, NGO workers, and others involved in fundraising. Grantbuddy helps create compelling, comprehensive, 
+and tailored proposals to meet your project needs.
+""")
+st.caption("Remember, AI is a support tool—double-check critical decisions with experts.")
 
-# Initialize Gemini client
+# Initialize the Generative AI client
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "model_name" not in st.session_state:
-    st.session_state.model_name = "gemini-1.5-pro-002"
+if "model" not in st.session_state:
+    st.session_state.model_name = "gemini-1.5-flash-002"
 if "temperature" not in st.session_state:
     st.session_state.temperature = 0.5
-if "debug" not in st.session_state:
-    st.session_state.debug = []
 if "pdf_content" not in st.session_state:
     st.session_state.pdf_content = ""
 if "chat_session" not in st.session_state:
     st.session_state.chat_session = None
 
-# Sidebar for model and temperature selection
+# Sidebar for settings
 with st.sidebar:
     st.title("Settings")
-    st.caption("Note: Gemini-1.5-pro-002 can only handle 2 requests per minute, gemini-1.5-flash-002 can handle 15 per minute")
+    st.caption(
+        "Note: Gemini-1.5-pro-002 handles 2 requests/min, gemini-1.5-flash-002 handles 15 requests/min"
+    )
     model_option = st.selectbox(
         "Select Model:", ["gemini-1.5-flash-002", "gemini-1.5-pro-002"]
     )
@@ -66,26 +66,26 @@ if uploaded_pdf:
         for page in pdf_reader.pages:
             pdf_text += page.extract_text() + "\n"
         st.session_state.pdf_content = pdf_text
-        st.session_state.debug.append(f"PDF processed: {len(pdf_text)} characters")
         # Reset chat session when new PDF is uploaded
         st.session_state.chat_session = None
     except Exception as e:
         st.error(f"Error processing PDF: {e}")
-        st.session_state.debug.append(f"PDF processing error: {e}")
 
 # Clear chat function
 if clear_button:
     st.session_state.messages = []
-    st.session_state.debug = []
     st.session_state.pdf_content = ""
     st.session_state.chat_session = None
-    st.rerun()
+    st.experimental_rerun()
 
 # Load system prompt
 def load_text_file(file_path):
     try:
         with open(file_path, 'r') as file:
             return file.read()
+    except FileNotFoundError:
+        st.error("Instructions file not found.")
+        return ""
     except Exception as e:
         st.error(f"Error loading text file: {e}")
         return ""
@@ -98,7 +98,6 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # User input
-# The placeholder text "Your message:" can be customized to any desired prompt, e.g., "Message Creative Assistant...".
 user_input = st.chat_input("Your message:")
 
 if user_input:
@@ -128,14 +127,14 @@ if user_input:
             
             # Initialize chat with system prompt and PDF content
             initial_messages = [
-                {"role": "user", "parts": [f"System: {system_prompt}"]},
-                {"role": "model", "parts": ["Understood. I will follow these instructions."]},
+                {"role": "user", "content": f"System: {system_prompt}"},
+                {"role": "model", "content": "Understood. I will follow these instructions."},
             ]
             
             if st.session_state.pdf_content:
                 initial_messages.extend([
-                    {"role": "user", "parts": [f"The following is the content of an uploaded PDF document. Please consider this information when responding to user queries:\n\n{st.session_state.pdf_content}"]},
-                    {"role": "model", "parts": ["I have received and will consider the PDF content in our conversation."]}
+                    {"role": "user", "content": f"The following is the content of an uploaded PDF document. Please consider this information when responding to user queries:\n\n{st.session_state.pdf_content}"},
+                    {"role": "model", "content": "I have received and will consider the PDF content in our conversation."}
                 ])
             
             st.session_state.chat_session = model.start_chat(history=initial_messages)
@@ -147,17 +146,13 @@ if user_input:
             full_response = response.text
             message_placeholder.markdown(full_response)
             st.session_state.messages.append({"role": "assistant", "content": full_response})
-            st.session_state.debug.append("Assistant response generated")
 
         except Exception as e:
             st.error(f"An error occurred while generating the response: {e}")
-            st.session_state.debug.append(f"Error: {e}")
 
-    st.rerun()
+    st.experimental_rerun()
 
 # Debug information
-# You can remove this by adding # in front of each line
-
 st.sidebar.title("Debug Info")
-for debug_msg in st.session_state.debug:
+for debug_msg in st.debug_info():
     st.sidebar.text(debug_msg)
