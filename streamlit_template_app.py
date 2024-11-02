@@ -15,6 +15,7 @@ st.markdown("""
 .big-font {
     font-size:30px !important;
     font-weight: bold;
+    text-align: center;
 }
 .user-message {
     padding: 10px;
@@ -27,6 +28,10 @@ st.markdown("""
     border-radius: 15px;
     background-color: #f0f0f0;
     margin: 5px 0;
+}
+.centered-image {
+    display: flex;
+    justify-content: center;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -69,65 +74,70 @@ def initialize_chat_session():
     except Exception as e:
         st.error(f"Error during chat initialization: {e}")
 
-# Home & Chat Page
-if page == "Home & Chat":
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown('<p class="big-font">Welcome to Grantbuddy!</p>', unsafe_allow_html=True)
-        st.write("AI-driven assistant to aid you in proposal writing and fundraising efforts.")
-        
-        # Initialize the session if not already started
-        if st.session_state.chat_session is None:
-            initialize_chat_session()
-
-        # Chat input area
-        user_input = st.chat_input("Type your message here:", key="user_input")
-
-        if user_input:
-            try:
-                st.session_state.messages.append({"role": "user", "parts": [{"text": user_input}]})
-                
-                if st.session_state.chat_session:
-                    with st.spinner("Grantbuddy is thinking..."):
-                        response = st.session_state.chat_session.send_message(
-                            {"role": "user", "parts": [{"text": user_input}]}
-                        )
-                        
-                        grantbuddy_response = response.text
-                        
-                        st.session_state.messages.append({"role": "model", "parts": [{"text": grantbuddy_response}]})
-                else:
-                    st.error("Chat session was not initialized correctly.")
-            
-            except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
-                st.info("Please try again. If the problem persists, try clearing your chat history or reloading the page.")
-
-        # Display chat history
-        for msg in st.session_state.messages:
-            if msg["role"] == "user":
-                st.chat_message("user").write(msg["parts"][0]["text"])
-            else:
-                st.chat_message("assistant").write(msg["parts"][0]["text"])
-
-        # Clear chat history button
-        if st.button("Clear Chat History"):
-            st.session_state.messages = []
-            st.experimental_rerun()
-
+# Function to display centered image
+def display_centered_image(image_path, caption):
+    col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        # Load a welcome image
-        image_path = 'Grantbuddy.webp'
         try:
             image = Image.open(image_path)
-            st.image(image, caption='Your Partner in Fundraising Success')
+            st.image(image, caption=caption, use_column_width=True)
         except Exception as e:
-            st.error("Error loading image.")
+            st.error(f"Error loading image: {e}")
+
+# Home & Chat Page
+if page == "Home & Chat":
+    st.markdown('<p class="big-font">Welcome to Grantbuddy!</p>', unsafe_allow_html=True)
+    
+    # Display centered image
+    display_centered_image('Grantbuddy.webp', 'Your Partner in Fundraising Success')
+    
+    st.write("AI-driven assistant to aid you in proposal writing and fundraising efforts.")
+    
+    # Initialize the session if not already started
+    if st.session_state.chat_session is None:
+        initialize_chat_session()
+
+    # Chat input area
+    user_input = st.chat_input("Type your message here:", key="user_input")
+
+    if user_input:
+        try:
+            st.session_state.messages.append({"role": "user", "parts": [{"text": user_input}]})
+            
+            if st.session_state.chat_session:
+                with st.spinner("Grantbuddy is thinking..."):
+                    response = st.session_state.chat_session.send_message(
+                        {"role": "user", "parts": [{"text": user_input}]}
+                    )
+                    
+                    grantbuddy_response = response.text
+                    
+                    st.session_state.messages.append({"role": "model", "parts": [{"text": grantbuddy_response}]})
+            else:
+                st.error("Chat session was not initialized correctly.")
+        
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+            st.info("Please try again. If the problem persists, try clearing your chat history or reloading the page.")
+
+    # Display chat history
+    for msg in st.session_state.messages:
+        if msg["role"] == "user":
+            st.chat_message("user").write(msg["parts"][0]["text"])
+        else:
+            st.chat_message("assistant").write(msg["parts"][0]["text"])
+
+    # Clear chat history button
+    if st.button("Clear Chat History"):
+        st.session_state.messages = []
+        st.experimental_rerun()
 
 # Progress & Export Page
 elif page == "Progress & Export":
-    st.title("Grant Writing Progress & Export")
+    st.markdown('<p class="big-font">Grant Writing Progress & Export</p>', unsafe_allow_html=True)
+
+    # Display centered image
+    display_centered_image('Grantbuddy.webp', 'Your Partner in Fundraising Success')
 
     # Progress Tracking
     st.subheader("Progress Tracking")
