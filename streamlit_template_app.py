@@ -30,9 +30,13 @@ st.write("AI-driven assistant to aid you in proposal writing and fundraising eff
 # Initialize GenerativeAI client
 genai.configure(api_key=st.secrets.get("GOOGLE_API_KEY", ""))
 
-# Initial Streamlit State
+# Ensure proper initialization of session state variables
 if "chat_session" not in st.session_state:
     st.session_state.chat_session = None
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "pdf_content" not in st.session_state:
+    st.session_state.pdf_content = ""
 if "debug" not in st.session_state:
     st.session_state.debug = []
 
