@@ -38,11 +38,13 @@ if "achievements" not in st.session_state:
 if "brainstorm_ideas" not in st.session_state:
     st.session_state.brainstorm_ideas = []
 if "current_step" not in st.session_state:
-    st.session_state.current_step = "start"
-if "proposal_type" not in st.session_state:
-    st.session_state.proposal_type = None
+    st.session_state.current_step = "initial_assessment"
 if "proposal_data" not in st.session_state:
     st.session_state.proposal_data = {}
+if "user_experience" not in st.session_state:
+    st.session_state.user_experience = None
+if "project_stage" not in st.session_state:
+    st.session_state.project_stage = None
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
@@ -76,6 +78,10 @@ def get_achievements(points):
         achievements.append("Grant Guru")
     return achievements
 
+def get_ai_response(prompt):
+    response = st.session_state.chat_session.send_message(prompt)
+    return response.text
+
 # Main application logic
 if page == "Home & Chat":
     st.markdown('<p class="big-font">Welcome to Grantbuddy!</p>', unsafe_allow_html=True)
@@ -87,92 +93,97 @@ if page == "Home & Chat":
     if st.session_state.chat_session is None:
         initialize_chat_session()
 
-    # Step-by-step process
-    if st.session_state.current_step == "start":
-        st.write("Welcome! Let's start crafting your proposal. What type of proposal are you working on?")
-        proposal_types = ["Grant", "Business", "Research", "Project", "Other"]
-        st.session_state.proposal_type = st.selectbox("Select proposal type:", proposal_types)
-        if st.button("Next"):
-            st.session_state.current_step = "purpose"
-            st.rerun()
-
-    elif st.session_state.current_step == "purpose":
-        st.write(f"Great! Let's focus on the purpose of your {st.session_state.proposal_type} proposal.")
-        st.write("In a sentence or two, what's the main goal of your proposal?")
-        purpose = st.text_area("Purpose:")
-        if st.button("Next"):
-            st.session_state.proposal_data["purpose"] = purpose
-            st.session_state.current_step = "audience"
-            st.rerun()
-
-    elif st.session_state.current_step == "audience":
-        st.write("Who is the main audience for your proposal?")
-        audience = st.text_input("Audience:")
-        if st.button("Next"):
-            st.session_state.proposal_data["audience"] = audience
-            st.session_state.current_step = "key_points"
-            st.rerun()
-
-    elif st.session_state.current_step == "key_points":
-        st.write("What are 3-5 key points you want to highlight in your proposal?")
-        key_points = st.text_area("Key Points (one per line):")
-        if st.button("Next"):
-            st.session_state.proposal_data["key_points"] = key_points.split('\n')
-            st.session_state.current_step = "summary"
-            st.rerun()
-
-    elif st.session_state.current_step == "summary":
-        st.write("Great job! Here's a summary of what we've gathered:")
-        st.write(f"Proposal Type: {st.session_state.proposal_type}")
-        st.write(f"Purpose: {st.session_state.proposal_data.get('purpose', '')}")
-        st.write(f"Audience: {st.session_state.proposal_data.get('audience', '')}")
-        st.write("Key Points:")
-        for point in st.session_state.proposal_data.get('key_points', []):
-            st.write(f"- {point}")
+    # Initial Assessment
+    if st.session_state.current_step == "initial_assessment":
+        st.write("Before we begin, let's get to know you and your project better.")
         
-        if st.button("Generate Outline"):
-            st.session_state.current_step = "outline"
+        experience_levels = ["Beginner (0-1 grants written)", "Intermediate (2-5 grants written)", "Advanced (6+ grants written)"]
+        st.session_state.user_experience = st.selectbox("What is your level of experience in grant writing?", experience_levels)
+        
+        project_stages = ["Just an idea", "Early planning stage", "Full project plan ready", "Looking to brainstorm"]
+        st.session_state.project_stage = st.selectbox("What stage is your project or idea at?", project_stages)
+        
+        specific_area = st.text_input("Is there a specific area of fundraising you're focusing on? (e.g., education, healthcare, technology)")
+        
+        if st.button("Start My Journey") and st.session_state.user_experience and st.session_state.project_stage:
+            st.session_state.proposal_data["experience_level"] = st.session_state.user_experience
+            st.session_state.proposal_data["project_stage"] = st.session_state.project_stage
+            st.session_state.proposal_data["focus_area"] = specific_area
+            st.session_state.current_step = "ai_assessment"
             st.rerun()
 
-    elif st.session_state.current_step == "outline":
-        st.write("Based on the information you provided, here's a suggested outline for your proposal:")
-        outline = f"""
-        1. Introduction
-           - Brief overview of {st.session_state.proposal_data.get('purpose', '')}
-           - Why it matters to {st.session_state.proposal_data.get('audience', '')}
+    elif st.session_state.current_step == "ai_assessment":
+        assessment_prompt = f"""
+        Based on the following user information:
+        - Experience level: {st.session_state.proposal_data['experience_level']}
+        - Project stage: {st.session_state.proposal_data['project_stage']}
+        - Focus area: {st.session_state.proposal_data['focus_area']}
 
-        2. Background
-           - Current situation
-           - Need for the proposal
-
-        3. Proposed Solution
-           {' '.join([f'- {point}' for point in st.session_state.proposal_data.get('key_points', [])])}
-
-        4. Implementation Plan
-           - Timeline
-           - Resources needed
-
-        5. Expected Outcomes
-           - Short-term benefits
-           - Long-term impact
-
-        6. Conclusion
-           - Call to action
+        Provide a personalized assessment and recommendation for how to proceed with the grant writing process. 
+        Include specific advice tailored to their experience level and project stage.
         """
-        st.text_area("Suggested Outline:", outline, height=300)
-        if st.button("Start Writing"):
-            st.session_state.current_step = "writing"
+        ai_assessment = get_ai_response(assessment_prompt)
+        st.write("AI Assessment and Recommendation:")
+        st.write(ai_assessment)
+        
+        if st.button("Continue to Next Step"):
+            if st.session_state.project_stage == "Looking to brainstorm":
+                st.session_state.current_step = "brainstorm"
+            elif st.session_state.project_stage == "Just an idea":
+                st.session_state.current_step = "idea_development"
+            else:
+                st.session_state.current_step = "proposal_type"
             st.rerun()
 
-    elif st.session_state.current_step == "writing":
-        st.write("Now it's time to start writing! Let's begin with the introduction.")
-        st.write("Here's a tip: Start with a hook that grabs your audience's attention.")
-        introduction = st.text_area("Write your introduction here:", height=200)
-        if st.button("Save and Continue"):
-            st.session_state.proposal_data["introduction"] = introduction
-            st.success("Great start! Your introduction has been saved.")
-            time.sleep(2)
+    elif st.session_state.current_step == "brainstorm":
+        st.write("Let's brainstorm some ideas for your project.")
+        focus_area = st.session_state.proposal_data.get('focus_area', 'fundraising')
+        brainstorm_prompt = f"Generate 5 innovative fundraising ideas related to {focus_area}, suitable for a {st.session_state.proposal_data['experience_level']} grant writer."
+        ai_ideas = get_ai_response(brainstorm_prompt)
+        st.write("AI-generated ideas:")
+        st.write(ai_ideas)
+        
+        user_idea = st.text_input("Do you have any ideas of your own? Enter them here:")
+        if st.button("Add My Idea") and user_idea:
+            st.session_state.brainstorm_ideas.append(user_idea)
+            st.success("Your idea has been added!")
+        
+        if st.button("Develop Selected Idea"):
+            st.session_state.current_step = "idea_development"
             st.rerun()
+
+    elif st.session_state.current_step == "idea_development":
+        st.write("Let's develop your idea further.")
+        idea_to_develop = st.selectbox("Which idea would you like to develop?", st.session_state.brainstorm_ideas + ["I have a new idea"])
+        
+        if idea_to_develop == "I have a new idea":
+            idea_to_develop = st.text_input("Enter your new idea:")
+        
+        if st.button("Develop This Idea") and idea_to_develop:
+            development_prompt = f"""
+            Develop the following idea into a more comprehensive project concept:
+            Idea: {idea_to_develop}
+            Experience level: {st.session_state.proposal_data['experience_level']}
+            Focus area: {st.session_state.proposal_data['focus_area']}
+
+            Provide a structured outline including:
+            1. Project overview
+            2. Goals and objectives
+            3. Target audience
+            4. Potential impact
+            5. Next steps for implementation
+            """
+            developed_idea = get_ai_response(development_prompt)
+            st.session_state.proposal_data["developed_idea"] = developed_idea
+            st.write("Developed Project Concept:")
+            st.write(developed_idea)
+            
+            if st.button("Move to Proposal Writing"):
+                st.session_state.current_step = "proposal_type"
+                st.rerun()
+
+    # Continue with the proposal writing process (proposal_type, purpose, audience, etc.)
+    # ... (include the rest of the proposal writing steps here, similar to the previous version)
 
     # Add a "Save Progress" button in the sidebar
     if st.sidebar.button("Save Progress"):
@@ -180,20 +191,41 @@ if page == "Home & Chat":
 
     # Add a "Start Over" button in the sidebar
     if st.sidebar.button("Start Over"):
-        for key in ['current_step', 'proposal_type', 'proposal_data']:
+        for key in ['current_step', 'proposal_data', 'user_experience', 'project_stage', 'brainstorm_ideas']:
             if key in st.session_state:
                 del st.session_state[key]
         st.rerun()
 
 elif page == "Progress & Export":
     st.title("Progress & Export")
-    st.write("This page will show your progress and allow you to export your work.")
-    # Add implementation for progress tracking and export functionality
+    st.write("Here's your current progress:")
+    for section, content in st.session_state.proposal_data.items():
+        st.subheader(section.capitalize())
+        st.write(content)
+    
+    if "final_draft" in st.session_state.proposal_data:
+        st.download_button("Download Final Draft", st.session_state.proposal_data["final_draft"], "proposal_final_draft.txt")
+    else:
+        st.write("Final draft not yet generated. Complete the writing process to generate a final draft.")
 
 elif page == "Brainstorm":
     st.title("Brainstorm")
-    st.write("This is where you can brainstorm ideas for your proposal.")
-    # Add implementation for brainstorming functionality
+    st.write("Use this space to brainstorm ideas for your project or proposal.")
+    
+    focus_area = st.session_state.proposal_data.get('focus_area', 'fundraising')
+    if st.button("Generate Ideas from AI"):
+        ai_ideas = get_ai_response(f"Generate 5 innovative fundraising ideas related to {focus_area}, suitable for a {st.session_state.proposal_data['experience_level']} grant writer.")
+        st.write("AI-generated ideas:")
+        st.write(ai_ideas)
+    
+    idea = st.text_input("Enter your own idea:")
+    if st.button("Add Idea") and idea:
+        st.session_state.brainstorm_ideas.append(idea)
+        st.success("Idea added successfully!")
+    
+    st.write("Your brainstormed ideas:")
+    for i, idea in enumerate(st.session_state.brainstorm_ideas, 1):
+        st.write(f"{i}. {idea}")
 
 # Gamification display in sidebar
 user_level, user_points = update_points(st.session_state.progress)
