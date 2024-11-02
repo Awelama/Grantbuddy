@@ -1,19 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
-import streamlit.components.v1 as components
-
-# Simplified CSS for styling
-components.html("""
-<style>
-    .stButton > button {
-        border-radius: 50px;
-    }
-    h1 {
-        color: #F63366;
-    }
-</style>
-""", height=0)
 
 # Load banner image
 image_path = 'Grantbuddy.webp'
@@ -23,14 +10,13 @@ try:
 except Exception as e:
     st.error("Error loading image.")
 
-# App Title and Description
 st.title("Welcome to Grantbuddy!")
 st.write("AI-driven assistant to aid you in proposal writing and fundraising efforts.")
 
 # Initialize GenerativeAI client
 genai.configure(api_key=st.secrets.get("GOOGLE_API_KEY", ""))
 
-# Ensure proper initialization of session state variables
+# Initialize session state variables
 if "chat_session" not in st.session_state:
     st.session_state.chat_session = None
 if "messages" not in st.session_state:
@@ -43,7 +29,6 @@ if "debug" not in st.session_state:
 # Function to initialize chat sessions
 def initialize_chat_session():
     try:
-        # Create generative model instance
         model = genai.GenerativeModel(
             model_name="gemini-1.5-flash-002",
             generation_config={
@@ -51,7 +36,6 @@ def initialize_chat_session():
             }
         )
         
-        # Define initial rich message structure
         initial_messages = [
             {"parts": [{"text": "Let's start the session with basic information."}]},
             {"parts": [{"text": "Okay, I am ready to process your requests."}]}
@@ -63,17 +47,38 @@ def initialize_chat_session():
                 {"parts": [{"text": "PDF content received and noted."}]}
             ])
 
-        # Start a chat session with properly structured messages
         st.session_state.chat_session = model.start_chat(history=initial_messages)
 
     except Exception as e:
         st.error(f"Error during chat initialization: {e}")
         st.session_state.debug.append(f"Chat initialization error: {e}")
 
-# Execute session initialization
-initialize_chat_session()
+if st.session_state.chat_session is None:
+    initialize_chat_session()
 
-# Debug information
-st.sidebar.title("Debug Info")
-for debug_msg in st.session_state.debug:
-    st.sidebar.write(debug_msg)
+# Chat input and display area
+user_input = st.text_input("Type your message here:", key="user_input")
+
+if user_input:
+    st.session_state.messages.append({"role": "user", "parts": [{"text": user_input}]})
+    try:
+        response = st.session_state.chat_session.send_message({"parts": [{"text": user_input}]})
+        grantbuddy_response = response.text
+        st.session_state.messages.append({"role": "assistant", "parts": [{"text": grantbuddy_response}]})
+    except Exception as e:
+        st.error(f"Communication error with Grantbuddy: {e}")
+        st.session_state.debug.append(f"Chat communication error: {e}")
+    finally:
+        st.experimental_rerun()
+
+st.subheader("Chat History")
+for msg in st.session_state.messages:
+    role = "User" if msg["role"] == "user" else "Grantbuddy"
+    for part in msg["parts"]:
+        st.write(f"{role}: {part['text']}")
+
+# Optional: Debugging info
+if st.session_state.debug:
+    st.sidebar.title("Debug Info")
+    for debug_msg in st.session_state.debug:
+        st.sidebar.write(debug_msg)
