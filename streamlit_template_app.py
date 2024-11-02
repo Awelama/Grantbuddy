@@ -43,7 +43,7 @@ st.write("""
 **Grantbuddy** is your advanced AI assistant specializing in proposal writing, budgeting, and impact storytelling 
 for educators, NGO workers, and others in fundraising. Grantbuddy helps create compelling, comprehensive, and tailored proposals to meet your project needs.
 """)
-st.caption("AI is a support tool—remember to consult with experts for critical decisions.")
+st.caption("Hello! I'm an AI here to help, but I might occasionally err. If that happens, a little grace and a virtual coffee would be lovely. Please verify important info as we continue!")
 
 # Initialize the Generative AI client
 genai.configure(api_key=st.secrets.get("GOOGLE_API_KEY", ""))
