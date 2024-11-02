@@ -61,10 +61,14 @@ if st.button("Send"):
             st.session_state.messages.append({"role": "user", "parts": [{"text": user_input}]})
             
             if st.session_state.chat_session:
+                # Send the message to the model
                 response = st.session_state.chat_session.send_message(
                     {"role": "user", "parts": [{"text": user_input}]}
                 )
-                grantbuddy_response = response.responses[-1]  # Replace with actual response handling
+                
+                # Assuming the text response is accessed directly, adjust accordingly
+                grantbuddy_response = response.text  # or another available attribute, e.g., response.content if applicable
+                
                 st.session_state.messages.append({"role": "model", "parts": [{"text": grantbuddy_response}]})
             else:
                 st.error("Chat session was not initialized correctly.")
