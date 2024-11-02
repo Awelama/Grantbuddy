@@ -10,7 +10,7 @@ st.set_page_config(page_title="Grantbuddy", layout="wide")
 # Custom CSS for better styling
 components.html("""
 <style>
-    .stButton>button {
+    .stButton > button {
         border-radius: 50px;
         background-color: #0073e6;
         color: white;
@@ -43,7 +43,7 @@ st.write("""
 **Grantbuddy** is your advanced AI assistant specializing in proposal writing, budgeting, and impact storytelling 
 for educators, NGO workers, and others in fundraising. Grantbuddy helps create compelling, comprehensive, and tailored proposals to meet your project needs.
 """)
-st.caption("Hello! I'm an AI here to help, but I might occasionally err. If that happens, a little grace and a virtual coffee would be lovely. Please verify important info as we continue!")
+st.caption("Hello! I'm Grantbuddy here to help, but I might occasionally err. If that happens, a little grace and a virtual coffee would be lovely. Please verify important info as we continue!")
 
 # Initialize the Generative AI client
 genai.configure(api_key=st.secrets.get("GOOGLE_API_KEY", ""))
@@ -91,7 +91,7 @@ with col2:
             pdf_text = ""
             for page in pdf_reader.pages:
                 pdf_text += page.extract_text() + "\n"
-            st.session_state.pdf_content = pdf_text
+            st.session_state.pdf_content = pdf_text.strip()  # Trim any unnecessary whitespace
             st.session_state.chat_session = None  # Reset chat session when new PDF is uploaded
         except Exception as e:
             st.error(f"Error processing PDF: {e}")
@@ -116,7 +116,7 @@ def load_text_file(file_path):
         st.error(f"Error loading text file: {e}")
         return ""
 
-system_prompt = load_text_file('instructions.txt')
+system_prompt = load_text_file('instructions.txt').strip()
 
 # Display chat messages
 for message in st.session_state.messages:
@@ -150,18 +150,20 @@ if user_input:
                 model_name=st.session_state.model_name,
                 generation_config=generation_config,
             )
-            
+
             # Initialize chat with system prompt and PDF content
             initial_messages = [
                 {"role": "user", "content": f"System: {system_prompt}"},
-                {"role": "model", "content": "Understood. I will follow these instructions."},
+                {"role": "model", "content": "Understood. I will follow these instructions."}
             ]
-            
+
             if st.session_state.pdf_content:
-                initial_messages.extend([
-                    {"role": "user", "content": f"The following is the content of an uploaded PDF document. Please consider this information when responding to user queries:\n\n{st.session_state.pdf_content}"},
-                    {"role": "model", "content": "I have received and will consider the PDF content in our conversation."}
-                ])
+                initial_messages.append(
+                    {"role": "user", "content": f"The following is the content of the uploaded PDF document. Please consider this information:\n\n{st.session_state.pdf_content}"}
+                )
+                initial_messages.append(
+                    {"role": "model", "content": "I have received and processed the PDF content."}
+                )
             
             st.session_state.chat_session = model.start_chat(history=initial_messages)
 
