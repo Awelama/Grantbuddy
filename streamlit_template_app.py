@@ -10,7 +10,15 @@ import time
 # Page configuration
 st.set_page_config(page_title="Grantbuddy", layout="wide")
 
-# CSS styling (keep existing styling)
+# CSS styling
+st.markdown("""
+<style>
+.big-font {
+    font-size:30px !important;
+    font-weight: bold;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # Initialize session state variables
 if "chat_session" not in st.session_state:
@@ -29,7 +37,6 @@ if "achievements" not in st.session_state:
     st.session_state.achievements = []
 if "brainstorm_ideas" not in st.session_state:
     st.session_state.brainstorm_ideas = []
-# New session state variables
 if "current_step" not in st.session_state:
     st.session_state.current_step = "start"
 if "proposal_type" not in st.session_state:
@@ -44,22 +51,30 @@ page = st.sidebar.radio("Go to", ["Home & Chat", "Progress & Export", "Brainstor
 # Initialize Google AI client
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
-# Placeholder functions (replace with actual implementations)
+# Helper functions
 def initialize_chat_session():
-    # Implement chat session initialization
-    pass
+    model = genai.GenerativeModel('gemini-pro')
+    st.session_state.chat_session = model.start_chat(history=[])
 
 def display_centered_image(image_path, caption):
-    # Implement image display
-    pass
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.image(image_path, caption=caption, use_column_width=True)
 
 def update_points(progress):
-    # Implement points update logic
-    return 1, 0  # Placeholder return values
+    points = sum(progress.values()) * 10
+    level = (points // 50) + 1
+    return level, points
 
 def get_achievements(points):
-    # Implement achievements logic
-    return []  # Placeholder return value
+    achievements = []
+    if points >= 10:
+        achievements.append("Getting Started")
+    if points >= 50:
+        achievements.append("Proposal Pro")
+    if points >= 100:
+        achievements.append("Grant Guru")
+    return achievements
 
 # Main application logic
 if page == "Home & Chat":
@@ -72,14 +87,14 @@ if page == "Home & Chat":
     if st.session_state.chat_session is None:
         initialize_chat_session()
 
-    # New step-by-step process
+    # Step-by-step process
     if st.session_state.current_step == "start":
         st.write("Welcome! Let's start crafting your proposal. What type of proposal are you working on?")
         proposal_types = ["Grant", "Business", "Research", "Project", "Other"]
         st.session_state.proposal_type = st.selectbox("Select proposal type:", proposal_types)
         if st.button("Next"):
             st.session_state.current_step = "purpose"
-            st.experimental_rerun()
+            st.rerun()
 
     elif st.session_state.current_step == "purpose":
         st.write(f"Great! Let's focus on the purpose of your {st.session_state.proposal_type} proposal.")
@@ -88,7 +103,7 @@ if page == "Home & Chat":
         if st.button("Next"):
             st.session_state.proposal_data["purpose"] = purpose
             st.session_state.current_step = "audience"
-            st.experimental_rerun()
+            st.rerun()
 
     elif st.session_state.current_step == "audience":
         st.write("Who is the main audience for your proposal?")
@@ -96,7 +111,7 @@ if page == "Home & Chat":
         if st.button("Next"):
             st.session_state.proposal_data["audience"] = audience
             st.session_state.current_step = "key_points"
-            st.experimental_rerun()
+            st.rerun()
 
     elif st.session_state.current_step == "key_points":
         st.write("What are 3-5 key points you want to highlight in your proposal?")
@@ -104,7 +119,7 @@ if page == "Home & Chat":
         if st.button("Next"):
             st.session_state.proposal_data["key_points"] = key_points.split('\n')
             st.session_state.current_step = "summary"
-            st.experimental_rerun()
+            st.rerun()
 
     elif st.session_state.current_step == "summary":
         st.write("Great job! Here's a summary of what we've gathered:")
@@ -117,7 +132,7 @@ if page == "Home & Chat":
         
         if st.button("Generate Outline"):
             st.session_state.current_step = "outline"
-            st.experimental_rerun()
+            st.rerun()
 
     elif st.session_state.current_step == "outline":
         st.write("Based on the information you provided, here's a suggested outline for your proposal:")
@@ -147,7 +162,7 @@ if page == "Home & Chat":
         st.text_area("Suggested Outline:", outline, height=300)
         if st.button("Start Writing"):
             st.session_state.current_step = "writing"
-            st.experimental_rerun()
+            st.rerun()
 
     elif st.session_state.current_step == "writing":
         st.write("Now it's time to start writing! Let's begin with the introduction.")
@@ -157,7 +172,7 @@ if page == "Home & Chat":
             st.session_state.proposal_data["introduction"] = introduction
             st.success("Great start! Your introduction has been saved.")
             time.sleep(2)
-            st.experimental_rerun()
+            st.rerun()
 
     # Add a "Save Progress" button in the sidebar
     if st.sidebar.button("Save Progress"):
@@ -168,7 +183,7 @@ if page == "Home & Chat":
         for key in ['current_step', 'proposal_type', 'proposal_data']:
             if key in st.session_state:
                 del st.session_state[key]
-        st.experimental_rerun()
+        st.rerun()
 
 elif page == "Progress & Export":
     st.title("Progress & Export")
