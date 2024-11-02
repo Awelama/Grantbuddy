@@ -76,6 +76,24 @@ def initialize_chat_session():
         st.error(f"Error during chat initialization: {e}")
         st.session_state.debug.append(f"Chat initialization error: {e}")
 
+# Function to determine if a response is substantive
+def is_substantive_response(message):
+    greetings = [
+        "hi", "hello", "hey", "greetings", "welcome", "how are you",
+        "nice to meet you", "good morning", "good afternoon", "good evening",
+        "how can i help", "how may i assist you", "what can i do for you",
+        "let me know how i can help"
+    ]
+    
+    lower_message = message.lower()
+    
+    if len(lower_message.split()) < 10:
+        for greeting in greetings:
+            if greeting in lower_message:
+                return False
+    
+    return True
+
 # Initialize the session if not already started
 if st.session_state.chat_session is None:
     initialize_chat_session()
@@ -112,16 +130,21 @@ if user_input:
         st.info("Please try again. If the problem persists, try clearing your chat history or reloading the page.")
         st.session_state.debug.append(f"Chat communication error: {e}")
 
-# Display chat history
+# Display chat history and feedback option
 st.subheader("Chat History")
-for msg in st.session_state.messages:
+show_feedback = False
+for i, msg in enumerate(st.session_state.messages):
     if msg["role"] == "user":
         st.markdown(f'<div class="user-message">User: {msg["parts"][0]["text"]}</div>', unsafe_allow_html=True)
     else:
         st.markdown(f'<div class="bot-message">Grantbuddy: {msg["parts"][0]["text"]}</div>', unsafe_allow_html=True)
+        
+        # Check if this is the last bot message and if it's substantive
+        if i == len(st.session_state.messages) - 1 and is_substantive_response(msg["parts"][0]["text"]):
+            show_feedback = True
 
 # User feedback
-if st.session_state.messages:
+if show_feedback:
     with st.expander("Was this response helpful?"):
         col1, col2 = st.columns(2)
         with col1:
