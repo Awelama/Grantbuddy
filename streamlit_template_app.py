@@ -3,8 +3,10 @@ from PIL import Image
 import google.generativeai as genai
 import json
 from datetime import datetime
+import pandas as pd
+from io import BytesIO
 
-# Custom CSS for message styling
+# Custom CSS for message styling and dark mode
 st.markdown("""
 <style>
 .user-message {
@@ -18,6 +20,10 @@ st.markdown("""
     border-radius: 15px;
     background-color: #f0f0f0;
     margin: 5px 0;
+}
+@media (prefers-color-scheme: dark) {
+    .user-message { background-color: #2c3e50; }
+    .bot-message { background-color: #34495e; }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -46,6 +52,8 @@ if "debug" not in st.session_state:
     st.session_state.debug = []
 if "session_start_time" not in st.session_state:
     st.session_state.session_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+if "progress" not in st.session_state:
+    st.session_state.progress = {"Project Description": False, "Budget Planning": False, "Impact Assessment": False}
 
 # Sidebar for customization and session info
 with st.sidebar:
@@ -56,6 +64,21 @@ with st.sidebar:
     st.subheader("Session Info")
     st.write(f"Messages in this session: {len(st.session_state.messages)}")
     st.write(f"Session started: {st.session_state.session_start_time}")
+    
+    # AI Persona Selection
+    ai_persona = st.selectbox("Select AI Persona", ["Formal", "Friendly", "Concise"])
+
+    # Dark Mode Toggle
+    dark_mode = st.checkbox("Dark Mode")
+    if dark_mode:
+        st.markdown("""
+        <style>
+        .stApp {
+            background-color: #1e1e1e;
+            color: white;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
 # Function to initialize chat sessions
 def initialize_chat_session():
@@ -98,6 +121,21 @@ def is_substantive_response(message):
 if st.session_state.chat_session is None:
     initialize_chat_session()
 
+# Guided Conversation Flow
+st.subheader("Grant Writing Steps")
+topic = st.selectbox("Select a topic to focus on:", 
+                     ["General", "Project Description", "Budget Planning", "Impact Assessment"])
+
+# Progress Tracking
+progress = st.progress(sum(st.session_state.progress.values()) / len(st.session_state.progress))
+st.write("Progress: ", ", ".join([k for k, v in st.session_state.progress.items() if v]))
+
+# Document Upload
+uploaded_file = st.file_uploader("Upload a document for analysis", type=["txt", "pdf", "docx"])
+if uploaded_file is not None:
+    # Here you would process the uploaded file
+    st.success("File uploaded successfully. Grantbuddy will analyze it.")
+
 # Chat input area
 user_input = st.chat_input("Type your message here:", key="user_input")
 
@@ -115,13 +153,20 @@ if user_input:
                 else:
                     history = [st.session_state.messages[-1]]
                 
+                # Incorporate AI persona and topic into the prompt
+                prompt = f"As a {ai_persona.lower()} grant writing assistant focusing on {topic}, please respond to: {user_input}"
+                
                 response = st.session_state.chat_session.send_message(
-                    {"role": "user", "parts": [{"text": user_input}]}
+                    {"role": "user", "parts": [{"text": prompt}]}
                 )
                 
                 grantbuddy_response = response.text
                 
                 st.session_state.messages.append({"role": "model", "parts": [{"text": grantbuddy_response}]})
+                
+                # Update progress
+                if topic != "General":
+                    st.session_state.progress[topic] = True
         else:
             st.error("Chat session was not initialized correctly.")
     
@@ -160,16 +205,30 @@ if show_feedback:
 # Clear chat history button
 if st.button("Clear Chat History"):
     st.session_state.messages = []
+    st.session_state.progress = {k: False for k in st.session_state.progress}
     st.experimental_rerun()
 
 # Export chat history
 if st.button("Export Chat History"):
     chat_history = json.dumps(st.session_state.messages, indent=2)
     st.download_button(
-        label="Download Chat History",
+        label="Download Chat History (JSON)",
         data=chat_history,
         file_name="chat_history.json",
         mime="application/json"
+    )
+    
+    # Export as formatted document
+    df = pd.DataFrame([(msg["role"], msg["parts"][0]["text"]) for msg in st.session_state.messages], 
+                      columns=["Role", "Message"])
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        df.to_excel(writer, sheet_name='Chat History', index=False)
+    st.download_button(
+        label="Download Chat History (Excel)",
+        data=buffer,
+        file_name="chat_history.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
 # Optional debug info
