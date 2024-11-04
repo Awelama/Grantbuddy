@@ -5,14 +5,14 @@ from PyPDF2 import PdfReader
 from PIL import Image
 
 # Streamlit configuration
-st.set_page_config(page_title="Grantbuddy", layout="wide")
+st.set_page_config(page_title="Welcome to Grantbuddy!", layout="wide")
 
 # Display image
 # This code attempts to open and display an image file named 'Build2.png'.
 # If successful, it shows the image with a caption. If there's an error, it displays an error message instead.
 # You can customize this by changing the image file name and path. Supported image types include .png, .jpg, .jpeg, and .gif.
 # To use a different image, replace 'Build2.png' with your desired image file name (e.g., 'my_custom_image.jpg').
-image_path = 'Build2.png'
+image_path = 'Grantbuddy.webp'
 try:
     image = Image.open(image_path)
     st.image(image, caption='Created by Awelama (2024)', use_column_width=True)
@@ -23,7 +23,7 @@ except Exception as e:
 # You can customize the title, description, and caption by modifying the text within the quotes.
 st.title("Grantbuddy!")
 st.write("[Provide a description of your own bot for the user]")
-st.caption("Hey, not that I can make mistakes. Check all important information.")
+st.caption("Hey, note that I can make mistakes. Check all important information.")
 
 # Initialize Gemini client
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
