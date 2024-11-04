@@ -1,31 +1,12 @@
+# Home.py (Main file)
+
 import streamlit as st
 import google.generativeai as genai
-from PyPDF2 import PdfReader
 from PIL import Image
+import os
 
 # Streamlit configuration
 st.set_page_config(page_title="Welcome to Grantbuddy!", layout="wide")
-
-# Display image
-# This code attempts to open and display an image file named 'Build2.png'.
-# If successful, it shows the image with a caption. If there's an error, it displays an error message instead.
-# You can customize this by changing the image file name and path. Supported image types include .png, .jpg, .jpeg, and .gif.
-# To use a different image, replace 'Build2.png' with your desired image file name (e.g., 'my_custom_image.jpg').
-image_path = 'Grantbuddy.webp'
-try:
-    image = Image.open(image_path)
-    st.image(image, caption='Created by Awelama (2024)', use_column_width=True)
-except Exception as e:
-    st.error(f"Error loading image: {e}")
-
-# Title and BotDescription 
-# You can customize the title, description, and caption by modifying the text within the quotes.
-st.title("Welcome to Grantbuddy!")
-st.write("[I'm Grantbuddy, an advanced AI assistant specializing in proposal writing, budgeting, and impact storytelling to help you.]")
-st.caption("Hey, note that I can make mistakes. Check all important information.")
-
-# Initialize Gemini client
-genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # Initialize session state
 if "messages" not in st.session_state:
@@ -34,51 +15,47 @@ if "model_name" not in st.session_state:
     st.session_state.model_name = "gemini-1.5-pro-002"
 if "temperature" not in st.session_state:
     st.session_state.temperature = 0.5
-if "debug" not in st.session_state:
-    st.session_state.debug = []
 if "pdf_content" not in st.session_state:
     st.session_state.pdf_content = ""
 if "chat_session" not in st.session_state:
     st.session_state.chat_session = None
 
-# Sidebar for model and temperature selection
-with st.sidebar:
-    st.title("Settings")
-    st.caption("Note: Gemini-1.5-pro-002 can only handle 2 requests per minute, gemini-1.5-flash-002 can handle 15 per minute")
-    model_option = st.selectbox(
-        "Select Model:", ["gemini-1.5-flash-002", "gemini-1.5-pro-002"]
-    )
-    if model_option != st.session_state.model_name:
-        st.session_state.model_name = model_option
-        st.session_state.messages = []
-        st.session_state.chat_session = None
-    temperature = st.slider("Temperature:", 0.0, 1.0, st.session_state.temperature, 0.1)
-    st.session_state.temperature = temperature
-    uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"])
-    clear_button = st.button("Clear Chat")
+# Display image
+image_path = 'Grantbuddy.webp'
+try:
+    image = Image.open(image_path)
+    st.image(image, caption='Created by Awelama (2024)', use_column_width=True)
+except Exception as e:
+    st.error(f"Error loading image: {e}")
 
-# Process uploaded PDF
-if uploaded_pdf:
-    try:
-        pdf_reader = PdfReader(uploaded_pdf)
-        pdf_text = ""
-        for page in pdf_reader.pages:
-            pdf_text += page.extract_text() + "\n"
-        st.session_state.pdf_content = pdf_text
-        st.session_state.debug.append(f"PDF processed: {len(pdf_text)} characters")
-        # Reset chat session when new PDF is uploaded
-        st.session_state.chat_session = None
-    except Exception as e:
-        st.error(f"Error processing PDF: {e}")
-        st.session_state.debug.append(f"PDF processing error: {e}")
+st.title("Welcome to Grantbuddy!")
+st.markdown("""
+    ### Your AI Assistant for Grant Writing and Impact Storytelling
 
-# Clear chat function
-if clear_button:
-    st.session_state.messages = []
-    st.session_state.debug = []
-    st.session_state.pdf_content = ""
-    st.session_state.chat_session = None
-    st.rerun()
+    Grantbuddy is an advanced AI assistant specializing in:
+    - 📝 Proposal writing
+    - 💰 Budgeting
+    - 📊 Impact storytelling
+
+    Navigate through the pages to access different features:
+    - **Chat**: Interact with Grantbuddy for assistance
+    - **PDF Upload**: Upload and process grant-related documents
+    - **Settings**: Customize your Grantbuddy experience
+
+    *Note: While Grantbuddy is designed to be helpful, always verify important information.*
+""")
+
+st.button("Get Started", on_click=lambda: st.switch_page("pages/01_Chat.py"))
+
+# pages/01_Chat.py
+
+import streamlit as st
+import google.generativeai as genai
+
+st.title("Chat with Grantbuddy")
+
+# Initialize Gemini client
+genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # Load system prompt
 def load_text_file(file_path):
@@ -97,7 +74,6 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # User input
-# The placeholder text "Your message:" can be customized to any desired prompt, e.g., "Message Creative Assistant...".
 user_input = st.chat_input("Your message:")
 
 if user_input:
@@ -141,22 +117,69 @@ if user_input:
 
         # Generate response with error handling
         try:
-            response = st.session_state.chat_session.send_message(current_message["content"])
+            with st.spinner("Generating response..."):
+                response = st.session_state.chat_session.send_message(current_message["content"])
 
             full_response = response.text
             message_placeholder.markdown(full_response)
             st.session_state.messages.append({"role": "assistant", "content": full_response})
-            st.session_state.debug.append("Assistant response generated")
 
         except Exception as e:
             st.error(f"An error occurred while generating the response: {e}")
-            st.session_state.debug.append(f"Error: {e}")
 
     st.rerun()
 
-# Debug information
-# You can remove this by adding # in front of each line
+# pages/02_PDF_Upload.py
 
-st.sidebar.title("Debug Info")
-for debug_msg in st.session_state.debug:
-    st.sidebar.text(debug_msg)
+import streamlit as st
+from PyPDF2 import PdfReader
+
+st.title("Upload PDF")
+
+uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"])
+
+if uploaded_pdf:
+    try:
+        with st.spinner("Processing PDF..."):
+            pdf_reader = PdfReader(uploaded_pdf)
+            pdf_text = ""
+            for page in pdf_reader.pages:
+                pdf_text += page.extract_text() + "\n"
+            st.session_state.pdf_content = pdf_text
+            st.success(f"PDF processed successfully! {len(pdf_text)} characters extracted.")
+        
+        # Display a preview of the extracted text
+        st.subheader("PDF Content Preview")
+        st.text_area("Extracted Text", pdf_text[:500] + "...", height=200)
+        
+    except Exception as e:
+        st.error(f"Error processing PDF: {e}. Please try again with a different file.")
+
+# pages/03_Settings.py
+
+import streamlit as st
+
+st.title("Settings")
+
+st.caption("Note: Gemini-1.5-pro-002 can only handle 2 requests per minute, gemini-1.5-flash-002 can handle 15 per minute")
+
+model_option = st.selectbox(
+    "Select Model:", ["gemini-1.5-flash-002", "gemini-1.5-pro-002"],
+    index=0 if st.session_state.model_name == "gemini-1.5-flash-002" else 1
+)
+
+if model_option != st.session_state.model_name:
+    st.session_state.model_name = model_option
+    st.session_state.messages = []
+    st.session_state.chat_session = None
+    st.success("Model updated. Chat history has been cleared.")
+
+temperature = st.slider("Temperature:", 0.0, 1.0, st.session_state.temperature, 0.1)
+if temperature != st.session_state.temperature:
+    st.session_state.temperature = temperature
+    st.success("Temperature updated.")
+
+if st.button("Clear Chat History"):
+    st.session_state.messages = []
+    st.session_state.chat_session = None
+    st.success("Chat history cleared.")
