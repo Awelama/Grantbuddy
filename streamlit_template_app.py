@@ -1,4 +1,3 @@
-
 import streamlit as st
 import google.generativeai as genai
 from PyPDF2 import PdfReader
@@ -21,8 +20,8 @@ except Exception as e:
 
 # Title and BotDescription 
 # You can customize the title, description, and caption by modifying the text within the quotes.
-st.title("Grantbuddy!")
-st.write("[Provide a description of your own bot for the user]")
+st.title("Welcome to Grantbuddy!")
+st.write("[You are Grantbuddy, an advanced AI assistant specializing in proposal writing, budgeting, and impact storytelling for educators and impact workers on fundraising proposals]")
 st.caption("Hey, note that I can make mistakes. Check all important information.")
 
 # Initialize Gemini client
