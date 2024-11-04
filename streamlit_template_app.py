@@ -1,6 +1,5 @@
 import streamlit as st
 import time
-import plotly.graph_objects as go
 
 # Custom CSS
 st.markdown("""
@@ -102,9 +101,8 @@ def proposal_development():
         })
         st.session_state.proposal['Budget Table'] = budget_df
         
-        # Visualize budget
-        fig = go.Figure(data=[go.Pie(labels=budget_df['Item'], values=budget_df['Amount'])])
-        st.plotly_chart(fig)
+        # Visualize budget using Streamlit's built-in chart
+        st.bar_chart(budget_df.set_index('Item'))
     
     if st.button("Save Section"):
         if user_input or (selected_section == "Budget for Proposal" and 'Budget Table' in st.session_state.proposal):
