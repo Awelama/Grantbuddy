@@ -5,7 +5,7 @@ from streamlit_extras.colored_header import colored_header
 from streamlit_extras.app_logo import add_logo
 import plotly.graph_objects as go
 
-# Custom CSS
+# Custom CSS (unchanged)
 st.markdown("""
 <style>
     .main {
@@ -64,10 +64,11 @@ def introduction():
     st.header("Let's get started!")
     st.write("I'm excited to help you with your fundraising efforts. Before we begin, I'd like to know a bit about you.")
     
-    st.session_state.user_info['name'] = st.text_input("What's your name?")
+    name = st.text_input("What's your name?", key="name_input")
     
     if st.button("Continue", key="intro_continue"):
-        if st.session_state.user_info['name']:
+        if name:
+            st.session_state.user_info['name'] = name
             show_thinking_animation("Processing your information...")
             st.session_state.stage += 1
             st.experimental_rerun()
@@ -78,26 +79,38 @@ def assess_experience():
     st.header("Your Experience")
     experience = st.radio("What's your level of experience with proposal writing?", 
                           ["Beginner", "Intermediate", "Advanced"])
-    st.session_state.user_info['experience'] = experience
+    
     if st.button("Continue"):
-        show_thinking_animation("Analyzing your experience level...")
-        st.session_state.stage += 1
-        st.experimental_rerun()
+        if experience:
+            st.session_state.user_info['experience'] = experience
+            show_thinking_animation("Analyzing your experience level...")
+            st.session_state.stage += 1
+            st.experimental_rerun()
+        else:
+            st.error("Please select your experience level before continuing.")
     add_backward_button()
 
 def project_details():
     st.header("Project Information")
-    st.session_state.user_info['organization'] = st.text_input("What's the name of your organization (if any)?")
-    st.session_state.user_info['project'] = st.text_area("Briefly describe your project or idea:")
-    st.session_state.user_info['funder'] = st.text_input("Do you have a specific funder in mind? If so, who?")
-    
+    organization = st.text_input("What's the name of your organization (if any)?")
+    project = st.text_area("Briefly describe your project or idea:")
+    funder = st.text_input("Do you have a specific funder in mind? If so, who?")
     project_status = st.radio("Where are you in your project development?", 
                               ["I have a developed project idea", "I just have an idea", "I need to brainstorm"])
-    st.session_state.user_info['project_status'] = project_status
+    
     if st.button("Continue"):
-        show_thinking_animation("Processing your project details...")
-        st.session_state.stage += 1
-        st.experimental_rerun()
+        if project and project_status:
+            st.session_state.user_info.update({
+                'organization': organization,
+                'project': project,
+                'funder': funder,
+                'project_status': project_status
+            })
+            show_thinking_animation("Processing your project details...")
+            st.session_state.stage += 1
+            st.experimental_rerun()
+        else:
+            st.error("Please provide a project description and select your project status before continuing.")
     add_backward_button()
 
 def proposal_development():
@@ -108,13 +121,15 @@ def proposal_development():
     
     st.write(f"Let's work on the {selected_section} section.")
     user_input = st.text_area(f"Enter your {selected_section} here:", height=300)
-    st.session_state.proposal[selected_section] = user_input
     
     if st.button("Generate Suggestions"):
-        show_thinking_animation()
-        suggestions = generate_suggestions(user_input, selected_section)
-        st.write("Here are some suggestions for improvement:")
-        st.write(suggestions)
+        if user_input:
+            show_thinking_animation()
+            suggestions = generate_suggestions(user_input, selected_section)
+            st.write("Here are some suggestions for improvement:")
+            st.write(suggestions)
+        else:
+            st.error("Please enter some content before generating suggestions.")
     
     if selected_section == "Budget for Proposal":
         st.write("Here's a simple budget template (in US dollars):")
@@ -129,12 +144,19 @@ def proposal_development():
         st.plotly_chart(fig)
     
     if st.button("Save Section"):
-        show_thinking_animation("Saving your progress...")
-        st.success(f"{selected_section} saved successfully!")
+        if user_input or (selected_section == "Budget for Proposal" and 'Budget Table' in st.session_state.proposal):
+            show_thinking_animation("Saving your progress...")
+            st.session_state.proposal[selected_section] = user_input
+            st.success(f"{selected_section} saved successfully!")
+        else:
+            st.error("Please enter some content before saving.")
     
     if st.button("Continue to Review"):
-        st.session_state.stage += 1
-        st.experimental_rerun()
+        if st.session_state.proposal:
+            st.session_state.stage += 1
+            st.experimental_rerun()
+        else:
+            st.error("Please save at least one section before continuing to review.")
     add_backward_button()
 
 def review_and_feedback():
@@ -150,10 +172,13 @@ def review_and_feedback():
     
     feedback = st.text_area("Do you have any questions or areas you'd like to improve?")
     if st.button("Submit Feedback"):
-        show_thinking_animation("Processing your feedback...")
-        st.success("Thank you for your feedback! I'll use this to improve the proposal.")
-        st.session_state.stage += 1
-        st.experimental_rerun()
+        if feedback:
+            show_thinking_animation("Processing your feedback...")
+            st.success("Thank you for your feedback! I'll use this to improve the proposal.")
+            st.session_state.stage += 1
+            st.experimental_rerun()
+        else:
+            st.error("Please provide some feedback before submitting.")
     add_backward_button()
 
 def conclusion():
@@ -174,9 +199,12 @@ def conclusion():
                           ["Definitely", "Maybe", "Probably not"])
     
     if st.button("Finish"):
-        show_thinking_animation("Finalizing your proposal...")
-        st.success("Thank you for using Grantbuddy! Good luck with your proposal!")
-        st.balloons()
+        if satisfaction and future_use:
+            show_thinking_animation("Finalizing your proposal...")
+            st.success("Thank you for using Grantbuddy! Good luck with your proposal!")
+            st.balloons()
+        else:
+            st.error("Please answer both questions before finishing.")
     add_backward_button()
 
 if __name__ == "__main__":
