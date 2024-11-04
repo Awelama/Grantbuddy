@@ -1,5 +1,4 @@
 import streamlit as st
-import time
 
 def main():
     st.set_page_config(page_title="Grantbuddy AI Proposal Assistant", layout="wide")
@@ -28,8 +27,8 @@ def introduction():
     st.header("Let's get started!")
     st.write("I'm excited to help you with your fundraising proposal. Before we begin, I'd like to know a bit about you.")
     if st.button("Continue"):
-        st.session_state.stage += 1
-        st.experimental_rerun()
+        st.session_state.stage = 1
+        st.empty()
 
 def assess_experience():
     st.header("Your Experience")
@@ -38,8 +37,8 @@ def assess_experience():
     st.session_state.user_info['experience'] = experience
     
     if st.button("Next"):
-        st.session_state.stage += 1
-        st.experimental_rerun()
+        st.session_state.stage = 2
+        st.empty()
 
 def project_details():
     st.header("Project Information")
@@ -52,8 +51,8 @@ def project_details():
     st.session_state.user_info['project_status'] = project_status
     
     if st.button("Next"):
-        st.session_state.stage += 1
-        st.experimental_rerun()
+        st.session_state.stage = 3
+        st.empty()
 
 def proposal_development():
     st.header("Proposal Development")
@@ -76,12 +75,10 @@ def proposal_development():
     
     if st.button("Save and Continue"):
         st.success(f"{selected_section} saved successfully!")
-        time.sleep(1)
-        st.experimental_rerun()
     
     if st.button("I'm satisfied with my proposal"):
-        st.session_state.stage += 1
-        st.experimental_rerun()
+        st.session_state.stage = 4
+        st.empty()
 
 def review_and_feedback():
     st.header("Review and Feedback")
@@ -97,9 +94,8 @@ def review_and_feedback():
     feedback = st.text_area("Do you have any questions or areas you'd like to improve?")
     if st.button("Submit Feedback"):
         st.success("Thank you for your feedback! I'll use this to improve the proposal.")
-        time.sleep(2)
-        st.session_state.stage += 1
-        st.experimental_rerun()
+        st.session_state.stage = 5
+        st.empty()
 
 def conclusion():
     st.header("Conclusion")
