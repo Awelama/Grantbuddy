@@ -1,11 +1,11 @@
 import streamlit as st
 import sqlite3
 import google.generativeai as genai
-from PIL import Image
-import io
+import time
 import pandas as pd
 from fpdf import FPDF
 import base64
+import io
 
 # Database setup
 conn = sqlite3.connect('grantbuddy.db', check_same_thread=False)
@@ -87,22 +87,47 @@ if page == "Chat":
     user_id = "test_user"  # In a real app, this would be the authenticated user's ID
     chat = get_chat_session()
 
+    # Initialize session state for messages if it doesn't exist
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
     # Display chat history
-    chat_history = get_chat_history(user_id)
-    for message, role in chat_history:
-        st.text(f"{role}: {message}")
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
     # Chat input
-    user_input = st.text_area("Type your message here:", key="user_input")
-    if st.button("Send", key="send_button"):
-        if user_input:
-            save_message(user_id, user_input, "User")
-            st.text(f"User: {user_input}")
+    if prompt := st.chat_input("Type your message here:"):
+        # Add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        save_message(user_id, prompt, "user")
+        
+        # Display user message
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # Get AI response
+        with st.chat_message("assistant"):
+            message_placeholder = st.empty()
+            response = chat.send_message(prompt)
+            full_response = response.text
             
-            response = chat.send_message(user_input)
-            ai_response = response.text
-            save_message(user_id, ai_response, "AI")
-            st.text(f"AI: {ai_response}")
+            # Simulate typing effect
+            for i in range(len(full_response)):
+                message_placeholder.markdown(full_response[:i+1] + "▌")
+                time.sleep(0.01)
+            message_placeholder.markdown(full_response)
+        
+        # Add assistant response to chat history
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
+        save_message(user_id, full_response, "assistant")
+
+    # Clear chat history button
+    if st.button("Clear Chat History"):
+        st.session_state.messages = []
+        c.execute("DELETE FROM chat_history WHERE user_id = ?", (user_id,))
+        conn.commit()
+        st.experimental_rerun()
 
     # AI Suggestion feature
     st.subheader("Get AI Suggestion")
