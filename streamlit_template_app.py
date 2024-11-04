@@ -1,23 +1,13 @@
 import streamlit as st
 import time
-from streamlit_extras.add_vertical_space import add_vertical_space
-from streamlit_extras.colored_header import colored_header
-from streamlit_extras.app_logo import add_logo
 import plotly.graph_objects as go
 
-# Custom CSS (unchanged)
+# Custom CSS
 st.markdown("""
 <style>
-    .main {
-        background-color: #f5f5f5;
-    }
-    .stButton>button {
-        background-color: #4CAF50;
-        color: white;
-    }
-    .stProgress > div > div > div > div {
-        background-color: #4CAF50;
-    }
+    .main { background-color: #f5f5f5; }
+    .stButton>button { background-color: #4CAF50; color: white; }
+    .stProgress > div > div > div > div { background-color: #4CAF50; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -31,34 +21,7 @@ def add_backward_button():
         st.experimental_rerun()
 
 def generate_suggestions(user_input, section):
-    # Placeholder function for generating suggestions
     return f"Here are some suggestions for your {section}:\n1. Consider adding more detail about...\n2. You might want to elaborate on...\n3. Don't forget to mention..."
-
-def main():
-    st.set_page_config(page_title="Grantbuddy", layout="wide")
-    add_logo("path_to_your_logo.png")
-
-    colored_header(label="Welcome to Grantbuddy", description="Your AI-powered proposal writing assistant", color_name="green-70")
-
-    if 'stage' not in st.session_state:
-        st.session_state.stage = 0
-        st.session_state.user_info = {}
-        st.session_state.proposal = {}
-
-    stages = [
-        introduction,
-        assess_experience,
-        project_details,
-        proposal_development,
-        review_and_feedback,
-        conclusion
-    ]
-
-    # Progress bar
-    st.progress((st.session_state.stage + 1) / len(stages))
-
-    current_stage = stages[st.session_state.stage]
-    current_stage()
 
 def introduction():
     st.header("Let's get started!")
@@ -206,6 +169,32 @@ def conclusion():
         else:
             st.error("Please answer both questions before finishing.")
     add_backward_button()
+
+def main():
+    st.set_page_config(page_title="Grantbuddy", layout="wide")
+
+    st.title("Welcome to Grantbuddy")
+    st.write("Your AI-powered proposal writing assistant")
+
+    if 'stage' not in st.session_state:
+        st.session_state.stage = 0
+        st.session_state.user_info = {}
+        st.session_state.proposal = {}
+
+    stages = [
+        introduction,
+        assess_experience,
+        project_details,
+        proposal_development,
+        review_and_feedback,
+        conclusion
+    ]
+
+    # Progress bar
+    st.progress((st.session_state.stage + 1) / len(stages))
+
+    current_stage = stages[st.session_state.stage]
+    current_stage()
 
 if __name__ == "__main__":
     main()
