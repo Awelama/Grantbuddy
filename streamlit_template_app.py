@@ -14,7 +14,7 @@ st.set_page_config(page_title="Welcome to Grantbuddy!", layout="wide")
 image_path = 'Grantbuddy.webp'
 try:
     image = Image.open(image_path)
-    st.image(image, caption='Created by Awelama (2024)', use_column_width=True)
+    st.image(image, caption='Created by Prince Awelama Kwarase (2024)', use_column_width=True)
 except Exception as e:
     st.error(f"Error loading image: {e}")
 
