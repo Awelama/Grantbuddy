@@ -23,7 +23,7 @@ def main():
     current_stage = stages[st.session_state.stage]
     current_stage()
 
-    # Navigation buttons
+def navigation_buttons():
     col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
         if st.session_state.stage > 0:
@@ -39,12 +39,14 @@ def main():
 def introduction():
     st.header("Let's get started!")
     st.write("I'm excited to help you with your fundraising proposal. Before we begin, I'd like to know a bit about you.")
+    navigation_buttons()
 
 def assess_experience():
     st.header("Your Experience")
     experience = st.radio("What's your level of experience with proposal writing?", 
                           ["Beginner", "Intermediate", "Advanced"])
     st.session_state.user_info['experience'] = experience
+    navigation_buttons()
 
 def project_details():
     st.header("Project Information")
@@ -55,6 +57,7 @@ def project_details():
     project_status = st.radio("Where are you in your project development?", 
                               ["I have a developed project", "I just have an idea", "I need help brainstorming"])
     st.session_state.user_info['project_status'] = project_status
+    navigation_buttons()
 
 def proposal_development():
     st.header("Proposal Development")
@@ -77,6 +80,8 @@ def proposal_development():
     
     if st.button("Save Section"):
         st.success(f"{selected_section} saved successfully!")
+    
+    navigation_buttons()
 
 def review_and_feedback():
     st.header("Review and Feedback")
@@ -92,6 +97,8 @@ def review_and_feedback():
     feedback = st.text_area("Do you have any questions or areas you'd like to improve?")
     if st.button("Submit Feedback"):
         st.success("Thank you for your feedback! I'll use this to improve the proposal.")
+    
+    navigation_buttons()
 
 def conclusion():
     st.header("Conclusion")
@@ -113,6 +120,8 @@ def conclusion():
     if st.button("Finish"):
         st.success("Thank you for using Grantbuddy! Good luck with your proposal!")
         st.balloons()
+    
+    navigation_buttons()
 
 if __name__ == "__main__":
     main()
