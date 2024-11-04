@@ -1,209 +1,158 @@
 import streamlit as st
-from PIL import Image
+import sqlite3
 import google.generativeai as genai
-import json
-from datetime import datetime
+from PIL import Image
+import io
 import pandas as pd
-from io import BytesIO
-import time
+from fpdf import FPDF
+import base64
 
-# Page configuration
-st.set_page_config(page_title="Grantbuddy", page_icon="📝", layout="wide")
+# Database setup
+conn = sqlite3.connect('grantbuddy.db', check_same_thread=False)
+c = conn.cursor()
 
-# Custom CSS for styling
-st.markdown("""
-<style>
-    .chat-bubble {
-        padding: 10px 15px;
-        border-radius: 20px;
-        margin: 5px 0;
-        max-width: 75%;
-        word-wrap: break-word;
-    }
-    .user-bubble {
-        background-color: #e6f3ff;
-        margin-left: auto;
-        text-align: right;
-    }
-    .bot-bubble {
-        background-color: #f0f0f0;
-        margin-right: auto;
-    }
-    .chat-container {
-        display: flex;
-        flex-direction: column;
-    }
-    .big-font {
-        font-size: 30px !important;
-        font-weight: bold;
-        text-align: center;
-        color: #4CAF50;
-    }
-    .stButton>button {
-        background-color: #4CAF50;
-        color: white;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Initialize session state variables
-if "chat_session" not in st.session_state:
-    st.session_state.chat_session = None
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "session_start_time" not in st.session_state:
-    st.session_state.session_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-if "progress" not in st.session_state:
-    st.session_state.progress = {"Project Description": False, "Budget Planning": False, "Impact Assessment": False}
+# Create tables if they don't exist
+c.execute('''CREATE TABLE IF NOT EXISTS chat_history
+             (id INTEGER PRIMARY KEY, user_id TEXT, message TEXT, role TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+c.execute('''CREATE TABLE IF NOT EXISTS user_files
+             (id INTEGER PRIMARY KEY, user_id TEXT, filename TEXT, file_data BLOB, upload_date DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+conn.commit()
 
 # Initialize GenerativeAI client
 genai.configure(api_key=st.secrets.get("GOOGLE_API_KEY", ""))
 
-# Function to initialize chat sessions
-def initialize_chat_session():
-    try:
+# Function to initialize or get chat session
+def get_chat_session():
+    if "chat_session" not in st.session_state:
         model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash-002",
+            model_name="gemini-1.5-pro-latest",
             generation_config={
                 "temperature": 0.7,
-                "max_output_tokens": 250
+                "max_output_tokens": 1024
             }
         )
-        
-        initial_messages = [
-            {"role": "model", "parts": [{"text": "Let's start the session with basic information."}]},
-            {"role": "model", "parts": [{"text": "Okay, I am ready to process your requests."}]}
-        ]
+        st.session_state.chat_session = model.start_chat(history=[])
+    return st.session_state.chat_session
 
-        st.session_state.chat_session = model.start_chat(history=initial_messages)
-        
-    except Exception as e:
-        st.error(f"Error during chat initialization: {e}")
+# Function to save message to database
+def save_message(user_id, message, role):
+    c.execute("INSERT INTO chat_history (user_id, message, role) VALUES (?, ?, ?)",
+              (user_id, message, role))
+    conn.commit()
 
-# Function to display chat messages
-def display_chat_message(role, content):
-    bubble_class = "user-bubble" if role == "user" else "bot-bubble"
-    st.markdown(f"""
-    <div class="chat-container">
-        <div class="chat-bubble {bubble_class}">
-            {content}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+# Function to get chat history from database
+def get_chat_history(user_id):
+    c.execute("SELECT message, role FROM chat_history WHERE user_id = ? ORDER BY timestamp", (user_id,))
+    return c.fetchall()
 
-# Main layout
-st.markdown('<h1 class="big-font">Welcome to Grantbuddy!</h1>', unsafe_allow_html=True)
+# Function to save uploaded file
+def save_file(user_id, file):
+    file_data = file.read()
+    c.execute("INSERT INTO user_files (user_id, filename, file_data) VALUES (?, ?, ?)",
+              (user_id, file.name, file_data))
+    conn.commit()
 
-# Sidebar
-with st.sidebar:
-    st.title("Navigation")
-    page = st.radio("Go to", ["Home & Chat", "Progress & Export"])
-    st.write(f"Session started: {st.session_state.session_start_time}")
+# Function to get user files
+def get_user_files(user_id):
+    c.execute("SELECT id, filename FROM user_files WHERE user_id = ?", (user_id,))
+    return c.fetchall()
 
-# Main content area
-if page == "Home & Chat":
-    st.write("AI-driven assistant to aid you in proposal writing and fundraising efforts.")
+# Function to generate AI suggestions
+def generate_suggestion(text):
+    chat = get_chat_session()
+    response = chat.send_message(f"Please provide a suggestion to improve this grant proposal section: {text}")
+    return response.text
+
+# Function to export chat history as PDF
+def export_as_pdf(chat_history):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    for message, role in chat_history:
+        pdf.cell(200, 10, txt=f"{role}: {message}", ln=True)
+    pdf_output = pdf.output(dest="S").encode("latin-1")
+    return base64.b64encode(pdf_output).decode()
+
+# Streamlit app
+st.set_page_config(page_title="Grantbuddy", layout="wide")
+
+# Sidebar for navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", ["Chat", "File Management", "Export"])
+
+# Main content
+if page == "Chat":
+    st.title("Grantbuddy Chat")
     
-    # Initialize the session if not already started
-    if st.session_state.chat_session is None:
-        initialize_chat_session()
+    user_id = "test_user"  # In a real app, this would be the authenticated user's ID
+    chat = get_chat_session()
 
     # Display chat history
-    for msg in st.session_state.messages:
-        display_chat_message(msg["role"], msg["parts"][0]["text"])
+    chat_history = get_chat_history(user_id)
+    for message, role in chat_history:
+        st.text(f"{role}: {message}")
 
-    # Chat input area
-    user_input = st.text_input("Type your message here:", key="user_input")
-    send_button = st.button("Send")
-
-    if send_button and user_input:
-        try:
-            st.session_state.messages.append({"role": "user", "parts": [{"text": user_input}]})
-            display_chat_message("user", user_input)
+    # Chat input
+    user_input = st.text_area("Type your message here:", key="user_input")
+    if st.button("Send", key="send_button"):
+        if user_input:
+            save_message(user_id, user_input, "User")
+            st.text(f"User: {user_input}")
             
-            if st.session_state.chat_session:
-                with st.spinner("Grantbuddy is thinking..."):
-                    response = st.session_state.chat_session.send_message(
-                        {"role": "user", "parts": [{"text": user_input}]}
-                    )
-                    
-                    grantbuddy_response = response.text
-                    
-                    # Simulate streaming effect
-                    placeholder = st.empty()
-                    for i in range(len(grantbuddy_response)):
-                        placeholder.markdown(f"""
-                        <div class="chat-container">
-                            <div class="chat-bubble bot-bubble">
-                                {grantbuddy_response[:i+1]}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        time.sleep(0.01)
-                    
-                    st.session_state.messages.append({"role": "model", "parts": [{"text": grantbuddy_response}]})
-            else:
-                st.error("Chat session was not initialized correctly.")
-        
-        except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
-            st.info("Please try again. If the problem persists, try clearing your chat history or reloading the page.")
+            response = chat.send_message(user_input)
+            ai_response = response.text
+            save_message(user_id, ai_response, "AI")
+            st.text(f"AI: {ai_response}")
 
-    # Clear chat history button
-    if st.button("Clear Chat History"):
-        st.session_state.messages = []
-        st.experimental_rerun()
+    # AI Suggestion feature
+    st.subheader("Get AI Suggestion")
+    section_text = st.text_area("Enter a section of your grant proposal for suggestions:")
+    if st.button("Get Suggestion"):
+        suggestion = generate_suggestion(section_text)
+        st.write("AI Suggestion:", suggestion)
 
-elif page == "Progress & Export":
-    st.title("Grant Writing Progress & Export")
-
-    # Progress Tracking
-    st.subheader("Progress Tracking")
+elif page == "File Management":
+    st.title("File Management")
     
-    # Display and update progress
-    for step, completed in st.session_state.progress.items():
-        st.session_state.progress[step] = st.checkbox(step, value=completed)
+    user_id = "test_user"  # In a real app, this would be the authenticated user's ID
 
-    # Calculate overall progress
-    progress_percentage = sum(st.session_state.progress.values()) / len(st.session_state.progress) * 100
+    uploaded_file = st.file_uploader("Upload a file", type=['txt', 'pdf', 'doc', 'docx'])
+    if uploaded_file:
+        save_file(user_id, uploaded_file)
+        st.success("File uploaded successfully!")
 
-    # Display progress bar
-    st.progress(progress_percentage / 100)
-    st.write(f"Overall Progress: {progress_percentage:.0f}%")
+    st.subheader("Your Files")
+    files = get_user_files(user_id)
+    for file_id, filename in files:
+        st.write(filename)
 
-    # Save progress button
-    if st.button("Save Progress"):
-        st.success("Progress saved successfully!")
+elif page == "Export":
+    st.title("Export Chat History")
+    
+    user_id = "test_user"  # In a real app, this would be the authenticated user's ID
+    chat_history = get_chat_history(user_id)
 
-    # Export Functionality
-    st.subheader("Export Chat History")
+    if st.button("Export as PDF"):
+        pdf_b64 = export_as_pdf(chat_history)
+        href = f'<a href="data:application/pdf;base64,{pdf_b64}" download="chat_history.pdf">Download PDF</a>'
+        st.markdown(href, unsafe_allow_html=True)
 
-    if st.session_state.messages:
-        # Export as JSON
-        if st.button("Export as JSON"):
-            chat_history = json.dumps(st.session_state.messages, indent=2)
-            st.download_button(
-                label="Download Chat History (JSON)",
-                data=chat_history,
-                file_name="chat_history.json",
-                mime="application/json"
-            )
-        
-        # Export as Excel
-        if st.button("Export as Excel"):
-            df = pd.DataFrame([(msg["role"], msg["parts"][0]["text"]) for msg in st.session_state.messages], 
-                              columns=["Role", "Message"])
-            buffer = BytesIO()
-            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                df.to_excel(writer, sheet_name='Chat History', index=False)
-            st.download_button(
-                label="Download Chat History (Excel)",
-                data=buffer,
-                file_name="chat_history.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-    else:
-        st.write("No chat history available to export.")
+# Accessibility improvements
+st.markdown("""
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+    }
+    .stButton>button {
+        font-size: 16px;
+        padding: 10px 20px;
+    }
+    .stTextInput>div>div>input {
+        font-size: 16px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Run the app
 if __name__ == "__main__":
