@@ -1,198 +1,192 @@
 import streamlit as st
-import time
+from PIL import Image
+import google.generativeai as genai
+import json
+from datetime import datetime
+import pandas as pd
+from io import BytesIO
 
-# Custom CSS
+# Page configuration
+st.set_page_config(page_title="Grantbuddy", page_icon="📝", layout="wide")
+
+# Custom CSS for styling
 st.markdown("""
 <style>
-    .main { background-color: #f5f5f5; }
-    .stButton>button { background-color: #4CAF50; color: white; }
-    .stProgress > div > div > div > div { background-color: #4CAF50; }
+.big-font {
+    font-size:30px !important;
+    font-weight: bold;
+    text-align: center;
+}
+.user-message {
+    padding: 10px;
+    border-radius: 15px;
+    background-color: #e6f3ff;
+    margin: 5px 0;
+}
+.bot-message {
+    padding: 10px;
+    border-radius: 15px;
+    background-color: #f0f0f0;
+    margin: 5px 0;
+}
+.centered-image {
+    display: flex;
+    justify-content: center;
+}
 </style>
 """, unsafe_allow_html=True)
 
-def show_thinking_animation(message="Grantbuddy is thinking..."):
-    with st.spinner(message):
-        time.sleep(2)
+# Initialize session state variables
+if "chat_session" not in st.session_state:
+    st.session_state.chat_session = None
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "session_start_time" not in st.session_state:
+    st.session_state.session_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+if "progress" not in st.session_state:
+    st.session_state.progress = {"Project Description": False, "Budget Planning": False, "Impact Assessment": False}
 
-def add_backward_button():
-    if st.button("← Go Back"):
-        st.session_state.stage -= 1
+# Sidebar for navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", ["Home", "Export"])
+
+# Initialize GenerativeAI client
+genai.configure(api_key=st.secrets.get("GOOGLE_API_KEY", ""))
+
+# Function to initialize chat sessions
+def initialize_chat_session():
+    try:
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash-002",
+            generation_config={
+                "temperature": 0.7,
+                "max_output_tokens": 250
+            }
+        )
+        
+        initial_messages = [
+            {"role": "model", "parts": [{"text": "Let's start the session with basic information."}]},
+            {"role": "model", "parts": [{"text": "Okay, I am ready to process your requests."}]}
+        ]
+
+        st.session_state.chat_session = model.start_chat(history=initial_messages)
+        
+    except Exception as e:
+        st.error(f"Error during chat initialization: {e}")
+
+# Function to display centered image
+def display_centered_image(image_path, caption):
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        try:
+            image = Image.open(image_path)
+            st.image(image, caption=caption, use_column_width=True)
+        except Exception as e:
+            st.error(f"Error loading image: {e}")
+
+# Home & Chat Page
+if page == "Home & Chat":
+    st.markdown('<p class="big-font">Welcome to Grantbuddy!</p>', unsafe_allow_html=True)
+    
+    # Display centered image
+    display_centered_image('Grantbuddy.webp', 'Your Partner in Fundraising Success')
+    
+    st.write("AI-driven assistant to aid you in proposal writing and fundraising efforts.")
+    
+    # Initialize the session if not already started
+    if st.session_state.chat_session is None:
+        initialize_chat_session()
+
+    # Chat input area
+    user_input = st.chat_input("Type your message here:", key="user_input")
+
+    if user_input:
+        try:
+            st.session_state.messages.append({"role": "user", "parts": [{"text": user_input}]})
+            
+            if st.session_state.chat_session:
+                with st.spinner("Grantbuddy is thinking..."):
+                    response = st.session_state.chat_session.send_message(
+                        {"role": "user", "parts": [{"text": user_input}]}
+                    )
+                    
+                    grantbuddy_response = response.text
+                    
+                    st.session_state.messages.append({"role": "model", "parts": [{"text": grantbuddy_response}]})
+            else:
+                st.error("Chat session was not initialized correctly.")
+        
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+            st.info("Please try again. If the problem persists, try clearing your chat history or reloading the page.")
+
+    # Display chat history
+    for msg in st.session_state.messages:
+        if msg["role"] == "user":
+            st.chat_message("user").write(msg["parts"][0]["text"])
+        else:
+            st.chat_message("assistant").write(msg["parts"][0]["text"])
+
+    # Clear chat history button
+    if st.button("Clear Chat History"):
+        st.session_state.messages = []
         st.experimental_rerun()
 
-def generate_suggestions(user_input, section):
-    return f"Here are some suggestions for your {section}:\n1. Consider adding more detail about...\n2. You might want to elaborate on...\n3. Don't forget to mention..."
+# Progress & Export Page
+elif page == "Progress & Export":
+    st.markdown('<p class="big-font">Grant Writing Progress & Export</p>', unsafe_allow_html=True)
 
-def introduction():
-    st.header("Let's get started!")
-    st.write("I'm excited to help you with your fundraising efforts. Before we begin, I'd like to know a bit about you.")
-    
-    name = st.text_input("What's your name?", key="name_input")
-    
-    if st.button("Continue", key="intro_continue"):
-        if name:
-            st.session_state.user_info['name'] = name
-            show_thinking_animation("Processing your information...")
-            st.session_state.stage += 1
-            st.experimental_rerun()
-        else:
-            st.error("Please enter your name before continuing.")
+    # Display centered image
+    display_centered_image('Grantbuddy.webp', 'Your Partner in Fundraising Success')
 
-def assess_experience():
-    st.header("Your Experience")
-    experience = st.radio("What's your level of experience with proposal writing?", 
-                          ["Beginner", "Intermediate", "Advanced"])
+    # Progress Tracking
+    st.subheader("Progress Tracking")
     
-    if st.button("Continue"):
-        if experience:
-            st.session_state.user_info['experience'] = experience
-            show_thinking_animation("Analyzing your experience level...")
-            st.session_state.stage += 1
-            st.experimental_rerun()
-        else:
-            st.error("Please select your experience level before continuing.")
-    add_backward_button()
+    # Display and update progress
+    for step, completed in st.session_state.progress.items():
+        st.session_state.progress[step] = st.checkbox(step, value=completed)
 
-def project_details():
-    st.header("Project Information")
-    organization = st.text_input("What's the name of your organization (if any)?")
-    project = st.text_area("Briefly describe your project or idea:")
-    funder = st.text_input("Do you have a specific funder in mind? If so, who?")
-    project_status = st.radio("Where are you in your project development?", 
-                              ["I have a developed project idea", "I just have an idea", "I need to brainstorm"])
-    
-    if st.button("Continue"):
-        if project and project_status:
-            st.session_state.user_info.update({
-                'organization': organization,
-                'project': project,
-                'funder': funder,
-                'project_status': project_status
-            })
-            show_thinking_animation("Processing your project details...")
-            st.session_state.stage += 1
-            st.experimental_rerun()
-        else:
-            st.error("Please provide a project description and select your project status before continuing.")
-    add_backward_button()
+    # Calculate overall progress
+    progress_percentage = sum(st.session_state.progress.values()) / len(st.session_state.progress) * 100
 
-def proposal_development():
-    st.header("Proposal Development")
-    sections = ["Proposal Development", "Budget for Proposal", "Impact Storytelling"]
-    
-    selected_section = st.selectbox("Which section would you like to work on?", sections)
-    
-    st.write(f"Let's work on the {selected_section} section.")
-    user_input = st.text_area(f"Enter your {selected_section} here:", height=300)
-    
-    if st.button("Generate Suggestions"):
-        if user_input:
-            show_thinking_animation()
-            suggestions = generate_suggestions(user_input, selected_section)
-            st.write("Here are some suggestions for improvement:")
-            st.write(suggestions)
-        else:
-            st.error("Please enter some content before generating suggestions.")
-    
-    if selected_section == "Budget for Proposal":
-        st.write("Here's a simple budget template (in US dollars):")
-        budget_df = st.data_editor({
-            "Item": ["Personnel", "Equipment", "Travel", "Supplies", "Other"],
-            "Amount": [0, 0, 0, 0, 0]
-        })
-        st.session_state.proposal['Budget Table'] = budget_df
+    # Display progress bar
+    st.progress(progress_percentage / 100)
+    st.write(f"Overall Progress: {progress_percentage:.0f}%")
+
+    # Save progress button
+    if st.button("Save Progress"):
+        st.success("Progress saved successfully!")
+
+    # Export Functionality
+    st.subheader("Export Chat History")
+
+    if st.session_state.messages:
+        # Export as JSON
+        if st.button("Export as JSON"):
+            chat_history = json.dumps(st.session_state.messages, indent=2)
+            st.download_button(
+                label="Download Chat History (JSON)",
+                data=chat_history,
+                file_name="chat_history.json",
+                mime="application/json"
+            )
         
-        # Visualize budget using Streamlit's built-in chart
-        st.bar_chart(budget_df.set_index('Item'))
-    
-    if st.button("Save Section"):
-        if user_input or (selected_section == "Budget for Proposal" and 'Budget Table' in st.session_state.proposal):
-            show_thinking_animation("Saving your progress...")
-            st.session_state.proposal[selected_section] = user_input
-            st.success(f"{selected_section} saved successfully!")
-        else:
-            st.error("Please enter some content before saving.")
-    
-    if st.button("Continue to Review"):
-        if st.session_state.proposal:
-            st.session_state.stage += 1
-            st.experimental_rerun()
-        else:
-            st.error("Please save at least one section before continuing to review.")
-    add_backward_button()
+        # Export as Excel
+        if st.button("Export as Excel"):
+            df = pd.DataFrame([(msg["role"], msg["parts"][0]["text"]) for msg in st.session_state.messages], 
+                              columns=["Role", "Message"])
+            buffer = BytesIO()
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                df.to_excel(writer, sheet_name='Chat History', index=False)
+            st.download_button(
+                label="Download Chat History (Excel)",
+                data=buffer,
+                file_name="chat_history.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+    else:
+        st.write("No chat history available to export.")
 
-def review_and_feedback():
-    st.header("Review and Feedback")
-    st.write("Great job on your proposal! Here's a summary of what you've created:")
-    
-    for section, content in st.session_state.proposal.items():
-        st.subheader(section)
-        if section == "Budget Table":
-            st.table(content)
-        else:
-            st.write(content)
-    
-    feedback = st.text_area("Do you have any questions or areas you'd like to improve?")
-    if st.button("Submit Feedback"):
-        if feedback:
-            show_thinking_animation("Processing your feedback...")
-            st.success("Thank you for your feedback! I'll use this to improve the proposal.")
-            st.session_state.stage += 1
-            st.experimental_rerun()
-        else:
-            st.error("Please provide some feedback before submitting.")
-    add_backward_button()
-
-def conclusion():
-    st.header("Conclusion")
-    st.write("Congratulations on completing your proposal draft!")
-    st.write("Here's a summary of key points and actions for further development:")
-    
-    summary = {
-        "Section": list(st.session_state.proposal.keys()),
-        "Status": ["Completed" for _ in st.session_state.proposal],
-        "Next Steps": ["Review and refine" for _ in st.session_state.proposal]
-    }
-    st.table(summary)
-    
-    satisfaction = st.radio("Did you find the proposal writing process with Grantbuddy helpful?", 
-                            ["Yes, very helpful", "Somewhat helpful", "Not very helpful"])
-    future_use = st.radio("Do you plan to use Grantbuddy in the future?", 
-                          ["Definitely", "Maybe", "Probably not"])
-    
-    if st.button("Finish"):
-        if satisfaction and future_use:
-            show_thinking_animation("Finalizing your proposal...")
-            st.success("Thank you for using Grantbuddy! Good luck with your proposal!")
-            st.balloons()
-        else:
-            st.error("Please answer both questions before finishing.")
-    add_backward_button()
-
-def main():
-    st.set_page_config(page_title="Grantbuddy", layout="wide")
-
-    st.title("Welcome to Grantbuddy")
-    st.write("Your AI-powered proposal writing assistant")
-
-    if 'stage' not in st.session_state:
-        st.session_state.stage = 0
-        st.session_state.user_info = {}
-        st.session_state.proposal = {}
-
-    stages = [
-        introduction,
-        assess_experience,
-        project_details,
-        proposal_development,
-        review_and_feedback,
-        conclusion
-    ]
-
-    # Progress bar
-    st.progress((st.session_state.stage + 1) / len(stages))
-
-    current_stage = stages[st.session_state.stage]
-    current_stage()
-
+# Run the app
 if __name__ == "__main__":
-    main()
+    st.sidebar.write(f"Session started: {st.session_state.session_start_time}")
