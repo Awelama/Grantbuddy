@@ -1,184 +1,126 @@
 import streamlit as st
-import sqlite3
-import google.generativeai as genai
 import time
-import pandas as pd
-from fpdf import FPDF
-import base64
-import io
 
-# Database setup
-conn = sqlite3.connect('grantbuddy.db', check_same_thread=False)
-c = conn.cursor()
+def main():
+    st.set_page_config(page_title="Grantbuddy AI Proposal Assistant", layout="wide")
 
-# Create tables if they don't exist
-c.execute('''CREATE TABLE IF NOT EXISTS chat_history
-             (id INTEGER PRIMARY KEY, user_id TEXT, message TEXT, role TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-c.execute('''CREATE TABLE IF NOT EXISTS user_files
-             (id INTEGER PRIMARY KEY, user_id TEXT, filename TEXT, file_data BLOB, upload_date DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-conn.commit()
+    st.title("Welcome to Grantbuddy AI Proposal Assistant")
+    st.write("I'm here to help you create compelling, comprehensive, and tailored fundraising proposals.")
 
-# Initialize GenerativeAI client
-genai.configure(api_key=st.secrets.get("GOOGLE_API_KEY", ""))
+    if 'stage' not in st.session_state:
+        st.session_state.stage = 0
+        st.session_state.user_info = {}
+        st.session_state.proposal = {}
 
-# Function to initialize or get chat session
-def get_chat_session():
-    if "chat_session" not in st.session_state:
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-pro-latest",
-            generation_config={
-                "temperature": 0.7,
-                "max_output_tokens": 1024
-            }
-        )
-        st.session_state.chat_session = model.start_chat(history=[])
-    return st.session_state.chat_session
+    stages = [
+        introduction,
+        assess_experience,
+        project_details,
+        proposal_development,
+        review_and_feedback,
+        conclusion
+    ]
 
-# Function to save message to database
-def save_message(user_id, message, role):
-    c.execute("INSERT INTO chat_history (user_id, message, role) VALUES (?, ?, ?)",
-              (user_id, message, role))
-    conn.commit()
+    current_stage = stages[st.session_state.stage]
+    current_stage()
 
-# Function to get chat history from database
-def get_chat_history(user_id):
-    c.execute("SELECT message, role FROM chat_history WHERE user_id = ? ORDER BY timestamp", (user_id,))
-    return c.fetchall()
-
-# Function to save uploaded file
-def save_file(user_id, file):
-    file_data = file.read()
-    c.execute("INSERT INTO user_files (user_id, filename, file_data) VALUES (?, ?, ?)",
-              (user_id, file.name, file_data))
-    conn.commit()
-
-# Function to get user files
-def get_user_files(user_id):
-    c.execute("SELECT id, filename FROM user_files WHERE user_id = ?", (user_id,))
-    return c.fetchall()
-
-# Function to generate AI suggestions
-def generate_suggestion(text):
-    chat = get_chat_session()
-    response = chat.send_message(f"Please provide a suggestion to improve this grant proposal section: {text}")
-    return response.text
-
-# Function to export chat history as PDF
-def export_as_pdf(chat_history):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    for message, role in chat_history:
-        pdf.cell(200, 10, txt=f"{role}: {message}", ln=True)
-    pdf_output = pdf.output(dest="S").encode("latin-1")
-    return base64.b64encode(pdf_output).decode()
-
-# Streamlit app
-st.set_page_config(page_title="Grantbuddy", layout="wide")
-
-# Sidebar for navigation
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Chat", "File Management", "Export"])
-
-# Main content
-if page == "Chat":
-    st.title("Grantbuddy Chat")
-    
-    user_id = "test_user"  # In a real app, this would be the authenticated user's ID
-    chat = get_chat_session()
-
-    # Initialize session state for messages if it doesn't exist
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-    # Display chat history
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-    # Chat input
-    if prompt := st.chat_input("Type your message here:"):
-        # Add user message to chat history
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        save_message(user_id, prompt, "user")
-        
-        # Display user message
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # Get AI response
-        with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            response = chat.send_message(prompt)
-            full_response = response.text
-            
-            # Simulate typing effect
-            for i in range(len(full_response)):
-                message_placeholder.markdown(full_response[:i+1] + "▌")
-                time.sleep(0.01)
-            message_placeholder.markdown(full_response)
-        
-        # Add assistant response to chat history
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
-        save_message(user_id, full_response, "assistant")
-
-    # Clear chat history button
-    if st.button("Clear Chat History"):
-        st.session_state.messages = []
-        c.execute("DELETE FROM chat_history WHERE user_id = ?", (user_id,))
-        conn.commit()
+def introduction():
+    st.header("Let's get started!")
+    st.write("I'm excited to help you with your fundraising proposal. Before we begin, I'd like to know a bit about you.")
+    if st.button("Continue"):
+        st.session_state.stage += 1
         st.experimental_rerun()
 
-    # AI Suggestion feature
-    st.subheader("Get AI Suggestion")
-    section_text = st.text_area("Enter a section of your grant proposal for suggestions:")
-    if st.button("Get Suggestion"):
-        suggestion = generate_suggestion(section_text)
-        st.write("AI Suggestion:", suggestion)
-
-elif page == "File Management":
-    st.title("File Management")
+def assess_experience():
+    st.header("Your Experience")
+    experience = st.radio("What's your level of experience with proposal writing?", 
+                          ["Beginner", "Intermediate", "Advanced"])
+    st.session_state.user_info['experience'] = experience
     
-    user_id = "test_user"  # In a real app, this would be the authenticated user's ID
+    if st.button("Next"):
+        st.session_state.stage += 1
+        st.experimental_rerun()
 
-    uploaded_file = st.file_uploader("Upload a file", type=['txt', 'pdf', 'doc', 'docx'])
-    if uploaded_file:
-        save_file(user_id, uploaded_file)
-        st.success("File uploaded successfully!")
-
-    st.subheader("Your Files")
-    files = get_user_files(user_id)
-    for file_id, filename in files:
-        st.write(filename)
-
-elif page == "Export":
-    st.title("Export Chat History")
+def project_details():
+    st.header("Project Information")
+    st.session_state.user_info['organization'] = st.text_input("What's the name of your organization (if any)?")
+    st.session_state.user_info['project'] = st.text_area("Briefly describe your project or idea:")
+    st.session_state.user_info['funder'] = st.text_input("Do you have a specific funder in mind? If so, who?")
     
-    user_id = "test_user"  # In a real app, this would be the authenticated user's ID
-    chat_history = get_chat_history(user_id)
+    project_status = st.radio("Where are you in your project development?", 
+                              ["I have a developed project", "I just have an idea", "I need help brainstorming"])
+    st.session_state.user_info['project_status'] = project_status
+    
+    if st.button("Next"):
+        st.session_state.stage += 1
+        st.experimental_rerun()
 
-    if st.button("Export as PDF"):
-        pdf_b64 = export_as_pdf(chat_history)
-        href = f'<a href="data:application/pdf;base64,{pdf_b64}" download="chat_history.pdf">Download PDF</a>'
-        st.markdown(href, unsafe_allow_html=True)
+def proposal_development():
+    st.header("Proposal Development")
+    sections = ["Executive Summary", "Problem Statement", "Goals and Objectives", "Methods and Activities", 
+                "Timeline", "Budget", "Evaluation Plan", "Sustainability"]
+    
+    selected_section = st.selectbox("Which section would you like to work on?", sections)
+    
+    st.write(f"Let's work on the {selected_section} section.")
+    st.session_state.proposal[selected_section] = st.text_area(f"Enter your {selected_section} here:", 
+                                                               height=300)
+    
+    if selected_section == "Budget":
+        st.write("Here's a simple budget template (in US dollars):")
+        budget_df = st.data_editor({
+            "Item": ["Personnel", "Equipment", "Travel", "Supplies", "Other"],
+            "Amount": [0, 0, 0, 0, 0]
+        })
+        st.session_state.proposal['Budget Table'] = budget_df
+    
+    if st.button("Save and Continue"):
+        st.success(f"{selected_section} saved successfully!")
+        time.sleep(1)
+        st.experimental_rerun()
+    
+    if st.button("I'm satisfied with my proposal"):
+        st.session_state.stage += 1
+        st.experimental_rerun()
 
-# Accessibility improvements
-st.markdown("""
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        line-height: 1.6;
-    }
-    .stButton>button {
-        font-size: 16px;
-        padding: 10px 20px;
-    }
-    .stTextInput>div>div>input {
-        font-size: 16px;
-    }
-</style>
-""", unsafe_allow_html=True)
+def review_and_feedback():
+    st.header("Review and Feedback")
+    st.write("Great job on your proposal! Here's a summary of what you've created:")
+    
+    for section, content in st.session_state.proposal.items():
+        st.subheader(section)
+        if section == "Budget Table":
+            st.table(content)
+        else:
+            st.write(content)
+    
+    feedback = st.text_area("Do you have any questions or areas you'd like to improve?")
+    if st.button("Submit Feedback"):
+        st.success("Thank you for your feedback! I'll use this to improve the proposal.")
+        time.sleep(2)
+        st.session_state.stage += 1
+        st.experimental_rerun()
 
-# Run the app
+def conclusion():
+    st.header("Conclusion")
+    st.write("Congratulations on completing your proposal draft!")
+    st.write("Here's a summary of key points and actions for further development:")
+    
+    summary = {
+        "Section": list(st.session_state.proposal.keys()),
+        "Status": ["Completed" for _ in st.session_state.proposal],
+        "Next Steps": ["Review and refine" for _ in st.session_state.proposal]
+    }
+    st.table(summary)
+    
+    satisfaction = st.radio("Did you find the proposal writing process with Grantbuddy helpful?", 
+                            ["Yes, very helpful", "Somewhat helpful", "Not very helpful"])
+    future_use = st.radio("Do you plan to use Grantbuddy in the future?", 
+                          ["Definitely", "Maybe", "Probably not"])
+    
+    if st.button("Finish"):
+        st.success("Thank you for using Grantbuddy! Good luck with your proposal!")
+        st.balloons()
+
 if __name__ == "__main__":
-    pass
+    main()
