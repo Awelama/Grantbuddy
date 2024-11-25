@@ -22,7 +22,7 @@ except Exception as e:
 # You can customize the title, description, and caption by modifying the text within the quotes.
 st.title("Welcome to Grantbuddy!")
 st.write("[I'm Grantbuddy, an advanced AI assistant specializing in proposal writing, budgeting, and impact storytelling to help you.]")
-st.caption("Hey, note that I can make mistakes. Check all important information.")
+st.caption("Grantbuddy can make mistakes. Please double-check all responses.")
 
 # Initialize Gemini client
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
