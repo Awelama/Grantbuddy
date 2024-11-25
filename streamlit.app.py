@@ -128,18 +128,16 @@ def search_perplexity(query):
 user_input = st.chat_input("Your message:")
 
 if user_input:
-    # Add user message to chat history
     current_message = {"role": "user", "content": user_input}
     st.session_state.messages.append(current_message)
 
     with st.chat_message("user"):
         st.markdown(current_message["content"])
 
-    # Generate and display assistant response
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
 
-        # Prepare messages for Gemini API
+        # Initialize chat session if needed
         if st.session_state.chat_session is None:
             generation_config = {
                 "temperature": st.session_state.temperature,
@@ -152,7 +150,6 @@ if user_input:
                 generation_config=generation_config,
             )
             
-            # Initialize chat with system prompt and PDF content
             initial_messages = [
                 {"role": "user", "parts": [f"System: {system_prompt}"]},
                 {"role": "model", "parts": ["Understood. I will follow these instructions."]},
@@ -160,33 +157,53 @@ if user_input:
             
             if st.session_state.pdf_content:
                 initial_messages.extend([
-                    {"role": "user", "parts": [f"The following is the content of an uploaded PDF document. Please consider this information when responding to user queries:\n\n{st.session_state.pdf_content}"]},
-                    {"role": "model", "parts": ["I have received and will consider the PDF content in our conversation."]}
+                    {"role": "user", "parts": [f"PDF content for reference:\n\n{st.session_state.pdf_content}"]},
+                    {"role": "model", "parts": ["Acknowledged PDF content."]}
                 ])
             
             st.session_state.chat_session = model.start_chat(history=initial_messages)
 
- # Generate response with error handling
         try:
-            if st.session_state.uploaded_file:
-                # If there's an uploaded file, include it in the generation
-                response = st.session_state.chat_session.send_message([
-                    st.session_state.uploaded_file,
-                    current_message["content"]
-                ])
+            is_search = user_input.lower().startswith(("search", "search the web", "find", "lookup"))
+            
+            if is_search:
+                # Extract search query
+                search_query = ' '.join(user_input.split()[2:] if user_input.lower().startswith("search the web") else user_input.split()[1:])
+                
+                if not search_query:
+                    message_placeholder.warning("Please provide a search query.")
+                    st.session_state.messages.pop()  # Remove the empty query from history
+                    st.rerun()
+                
+                # Execute search
+                message_placeholder.info("🔍 Searching the web...")
+                search_results = search_perplexity(search_query)
+                
+                if search_results:
+                    # Process results with Gemini
+                    prompt = (
+                        f"Here are web search results for: '{search_query}'\n\n"
+                        f"{search_results}\n\n"
+                        "Please provide a clear, accurate summary of these results in a well-formatted response. "
+                        "Include relevant links when available. Verify accuracy before responding."
+                    )
+                    
+                    response = st.session_state.chat_session.send_message(prompt)
+                    message_placeholder.markdown(response.text)
+                    st.session_state.messages.append({"role": "assistant", "content": response.text})
+                    st.session_state.debug.append("Search results processed successfully")
             else:
-                # Otherwise, just use the text prompt
-                response = st.session_state.chat_session.send_message(current_message["content"])
-
-            full_response = response.text
-            message_placeholder.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-            st.session_state.debug.append("Assistant response generated")
-
+                # Handle regular chat
+                response = st.session_state.chat_session.send_message(user_input)
+                message_placeholder.markdown(response.text)
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+                st.session_state.debug.append("Regular chat response generated")
+                
         except Exception as e:
-            st.error(f"An error occurred while generating the response: {e}")
+            st.error(f"Error generating response: {e}")
             st.session_state.debug.append(f"Error: {e}")
-
+            st.session_state.messages.pop()  # Remove failed message from history
+    
     st.rerun()
 
 # Debug information
