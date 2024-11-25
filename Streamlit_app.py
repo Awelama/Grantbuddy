@@ -21,7 +21,7 @@ except Exception as e:
 # Title and BotDescription 
 # You can customize the title, description, and caption by modifying the text within the quotes.
 st.title("Welcome to Grantbuddy!")
-st.write("[I'm Grantbuddy, an advanced AI assistant specializing in proposal writing, budgeting, and impact storytelling to help you.]")
+st.write("I'm Grantbuddy, an advanced AI assistant specializing in proposal writing, budgeting, and impact storytelling to help you.")
 st.caption("Grantbuddy can make mistakes. Please double-check all responses.")
 
 # Initialize Gemini client
