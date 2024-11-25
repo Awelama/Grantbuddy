@@ -4,7 +4,7 @@ from PyPDF2 import PdfReader
 from PIL import Image
 
 # Streamlit configuration
-st.set_page_config(page_title="Welcome to Grantbuddy!", layout="wide")
+st.set_page_config(page_title="Welcome to Grantbuddy!", layout="200")
 
 # Display image
 # This code attempts to open and display an image file named 'Build2.png'.
