@@ -102,6 +102,26 @@ system_prompt = load_text_file('instructions.txt')
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+def search_perplexity(query):
+    """Execute a search query using Perplexity API"""
+    try:
+        response = requests.post(
+            "https://api.perplexity.ai/chat/completions",
+            headers={
+                "accept": "application/json",
+                "content-type": "application/json",
+                "Authorization": f"Bearer {PERPLEXITY_API_KEY}"
+            },
+            json={
+                "model": "llama-3.1-sonar-small-128k-online",
+                "messages": [{"role": "user", "content": f"Search the web for: {query}"}]
+            }
+        )
+        response.raise_for_status()
+        return response.json()['choices'][0]['message']['content']
+    except Exception as e:
+        st.error(f"Perplexity API Error: {e}")
+        return None
 
 # User input
 # The placeholder text "Your message:" can be customized to any desired prompt, e.g., "Message Creative Assistant...".
