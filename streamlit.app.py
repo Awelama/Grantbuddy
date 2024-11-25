@@ -1,6 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
+import requests
 
 # Streamlit configuration
 st.set_page_config(page_title="Welcome to Grantbuddy!", layout="wide")
