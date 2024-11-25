@@ -22,7 +22,7 @@ if "should_generate_response" not in st.session_state:
 image_path = 'Grantbuddy.webp'
 try:
     image = Image.open(image_path)
-    st.image(image, caption='Created by Prince Awelama Kwarase (2024)', use_column_width=True)
+    st.image(image, caption='Created by Awelama Kwarase (2024)', use_column_width=True)
 except Exception as e:
     st.error(f"Error loading image: {e}")
 
@@ -127,7 +127,7 @@ def search_perplexity(query):
 
 # User input
 # The placeholder text "Your message:" can be customized to any desired prompt, e.g., "Message Creative Assistant...".
-user_input = st.chat_input("Your message:")
+user_input = st.chat_input("Describe what you want Grantbuddy to do and provide the necessary background information. An example is: I am from a small NGO in Kenya focused on girls' education. We need help creating a proposal for a $50,000 grant to expand our after-school tutoring program. Can you guide me through the process?")
 
 if user_input:
     current_message = {"role": "user", "content": user_input}
