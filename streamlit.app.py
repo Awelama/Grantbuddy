@@ -1,6 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
-from PyPDF2 import PdfReader
+
 from PIL import Image
 
 # Streamlit configuration
