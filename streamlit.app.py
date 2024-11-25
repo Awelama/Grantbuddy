@@ -35,6 +35,8 @@ st.caption("Hey, note that I can make mistakes. Check all important information.
 # Initialize Gemini client
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
+PERPLEXITY_API_KEY = st.secrets["P_API_KEY"]
+
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
